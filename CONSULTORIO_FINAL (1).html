@@ -1,0 +1,2535 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Consultorio · Módulo Pacientes</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #F4F8F7;
+    --surface: #FFFFFF;
+    --surface-2: #EEF4F2;
+    --ink: #12302C;
+    --ink-soft: #3E5C58;
+    --muted: #7C9490;
+    --line: #DCE7E4;
+    --primary: #0E6B62;
+    --primary-dark: #094B45;
+    --primary-tint: #E3F1EE;
+    --accent: #5B63D6;
+    --accent-tint: #ECEDFB;
+    --green: #1FA35A;
+    --green-tint: #E7F7EE;
+    --yellow: #C9971C;
+    --yellow-tint: #FBF3DD;
+    --orange: #E06B22;
+    --orange-tint: #FCE8DA;
+    --red: #D5473F;
+    --red-tint: #FBE6E4;
+    --shadow: 0 1px 2px rgba(18,48,44,0.04), 0 8px 24px -12px rgba(18,48,44,0.15);
+    --radius: 14px;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-serif;}
+  #root{min-height:100vh;}
+
+  /* ---------- layout ---------- */
+  .app{display:flex; min-height:100vh;}
+  .sync-bar{
+    position:sticky; top:0; z-index:60; display:flex; align-items:center; justify-content:space-between;
+    gap:10px; padding:8px 16px; background:var(--primary-dark); color:#EAF4F2; font-size:12.5px;
+  }
+  .sync-bar .dot{width:8px; height:8px; border-radius:50%; flex-shrink:0;}
+  .sync-bar button{
+    background:rgba(255,255,255,0.12); border:none; color:#EAF4F2; font-size:12px; font-family:inherit;
+    padding:6px 12px; border-radius:8px; cursor:pointer;
+  }
+  .sidebar{
+    width:236px; flex-shrink:0; background:var(--primary-dark); color:#EAF4F2;
+    padding:26px 18px; display:flex; flex-direction:column; gap:26px;
+  }
+  .brand{display:flex; align-items:center; gap:10px;}
+  .brand svg{flex-shrink:0;}
+  .brand-text{font-family:'Fraunces',serif; font-size:19px; font-weight:600; line-height:1.15; letter-spacing:0.2px;}
+  .brand-sub{font-size:10.5px; color:#9FC3BD; letter-spacing:0.08em; text-transform:uppercase; margin-top:2px;}
+
+  .nav{display:flex; flex-direction:column; gap:3px;}
+  .nav-item{
+    display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:10px;
+    font-size:14px; color:#BFDAD5; cursor:pointer; transition:background .15s, color .15s;
+    border:none; background:none; text-align:left; font-family:inherit;
+  }
+  .nav-item:hover{background:rgba(255,255,255,0.06); color:#fff;}
+  .nav-item.active{background:var(--primary); color:#fff; font-weight:600;}
+  .nav-item.disabled{opacity:.45; cursor:not-allowed;}
+  .nav-item.disabled:hover{background:none; color:#BFDAD5;}
+  .nav-dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0;opacity:.7;}
+
+  .nav-footer{margin-top:auto; font-size:11px; color:#6E948D; line-height:1.5;}
+
+  .main{flex:1; padding:32px 40px; max-width:1400px;}
+  .topline{display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:26px; gap:20px; flex-wrap:wrap;}
+  .h1{font-family:'Fraunces',serif; font-size:28px; font-weight:600; margin:0 0 4px;}
+  .h1-sub{color:var(--muted); font-size:14px; margin:0;}
+
+  .btn{
+    display:inline-flex; align-items:center; gap:8px; border:none; border-radius:10px;
+    padding:11px 18px; font-family:inherit; font-size:14px; font-weight:600; cursor:pointer;
+    transition:transform .1s, box-shadow .15s, background .15s;
+  }
+  .btn:active{transform:scale(0.98);}
+  .btn-primary{background:var(--accent); color:#fff; box-shadow:0 6px 16px -6px rgba(91,99,214,0.55);}
+  .btn-primary:hover{background:#4A52C4;}
+  .btn-ghost{background:var(--surface); color:var(--ink-soft); border:1px solid var(--line);}
+  .btn-ghost:hover{background:var(--surface-2);}
+  .btn-danger-text{background:none; color:var(--red); padding:6px 8px;}
+
+  /* ---------- stat strip ---------- */
+  .stats{display:grid; grid-template-columns:repeat(5,1fr); gap:14px; margin-bottom:26px;}
+  .stats.stats-4{grid-template-columns:repeat(4,1fr);}
+  .stat-card{
+    background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+    padding:16px 18px; box-shadow:var(--shadow);
+  }
+  .stat-num{font-family:'Fraunces',serif; font-size:26px; font-weight:600; line-height:1;}
+  .stat-label{font-size:12px; color:var(--muted); margin-top:6px; display:flex; align-items:center; gap:6px;}
+  .stat-card.total .stat-num{color:var(--ink);}
+
+  /* ---------- toolbar ---------- */
+  .toolbar{display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap; align-items:center;}
+  .search-wrap{position:relative; flex:1; min-width:220px;}
+  .search-wrap input{
+    width:100%; padding:11px 14px 11px 38px; border-radius:10px; border:1px solid var(--line);
+    background:var(--surface); font-family:inherit; font-size:14px; color:var(--ink);
+  }
+  .search-wrap input:focus{outline:2px solid var(--accent); outline-offset:1px;}
+  .search-icon{position:absolute; left:13px; top:50%; transform:translateY(-50%); color:var(--muted);}
+  select.filter{
+    padding:11px 14px; border-radius:10px; border:1px solid var(--line); background:var(--surface);
+    font-family:inherit; font-size:14px; color:var(--ink-soft); cursor:pointer;
+  }
+
+  /* ---------- table ---------- */
+  .table-wrap{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden;}
+  table{width:100%; border-collapse:collapse; font-size:13.5px;}
+  thead th{
+    text-align:left; padding:13px 16px; font-size:11px; letter-spacing:0.06em; text-transform:uppercase;
+    color:var(--muted); border-bottom:1px solid var(--line); font-weight:600; background:var(--surface-2);
+  }
+  tbody td{padding:13px 16px; border-bottom:1px solid var(--line); color:var(--ink-soft); vertical-align:middle;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr:hover{background:#FAFCFB;}
+  .pid{font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--primary); font-weight:600; background:var(--primary-tint); padding:3px 8px; border-radius:6px; letter-spacing:0.02em;}
+  .pname{font-weight:600; color:var(--ink);}
+  .psub{font-size:12px; color:var(--muted);}
+
+  .badge{display:inline-flex; align-items:center; gap:6px; padding:5px 10px; border-radius:20px; font-size:12px; font-weight:600;}
+  .dot{width:7px;height:7px;border-radius:50%; flex-shrink:0;}
+  .badge.b-green{background:var(--green-tint); color:var(--green);}
+  .badge.b-yellow{background:var(--yellow-tint); color:var(--yellow);}
+  .badge.b-orange{background:var(--orange-tint); color:var(--orange);}
+  .badge.b-red{background:var(--red-tint); color:var(--red);}
+  .dot.d-green{background:var(--green);} .dot.d-yellow{background:var(--yellow);}
+  .dot.d-orange{background:var(--orange);} .dot.d-red{background:var(--red);}
+
+  .row-actions{display:flex; gap:4px; justify-content:flex-end;}
+  .icon-btn{background:none; border:none; cursor:pointer; padding:7px; border-radius:8px; color:var(--muted); display:flex;}
+  .icon-btn:hover{background:var(--surface-2); color:var(--ink);}
+
+  .empty-state{padding:70px 20px; text-align:center; color:var(--muted);}
+  .empty-state .tooth{margin-bottom:14px;}
+  .empty-state h3{font-family:'Fraunces',serif; color:var(--ink); font-size:18px; margin:0 0 6px;}
+  .empty-state p{font-size:13.5px; margin:0 0 18px;}
+
+  /* ---------- modal ---------- */
+  .overlay{
+    position:fixed; inset:0; background:rgba(18,48,44,0.35); backdrop-filter:blur(2px);
+    display:flex; align-items:flex-start; justify-content:center; padding:36px 16px; z-index:50; overflow-y:auto;
+  }
+  .modal{
+    background:var(--surface); border-radius:18px; width:100%; max-width:720px; box-shadow:0 24px 60px -20px rgba(18,48,44,0.4);
+    animation:pop .16s ease;
+  }
+  @keyframes pop{from{opacity:0; transform:translateY(6px) scale(.99);} to{opacity:1; transform:none;}}
+  .modal-head{display:flex; justify-content:space-between; align-items:center; padding:22px 26px; border-bottom:1px solid var(--line);}
+  .modal-head h2{font-family:'Fraunces',serif; font-size:20px; margin:0; font-weight:600;}
+  .modal-close{background:none; border:none; cursor:pointer; color:var(--muted); padding:6px; border-radius:8px;}
+  .modal-close:hover{background:var(--surface-2); color:var(--ink);}
+  .modal-body{padding:24px 26px; max-height:70vh; overflow-y:auto;}
+  .modal-foot{display:flex; justify-content:flex-end; gap:10px; padding:18px 26px; border-top:1px solid var(--line);}
+
+  .section-label{font-size:11.5px; text-transform:uppercase; letter-spacing:0.07em; color:var(--primary); font-weight:700; margin:22px 0 12px;}
+  .section-label:first-child{margin-top:0;}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  .grid3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px;}
+  .field{display:flex; flex-direction:column; gap:5px;}
+  .field label{font-size:12px; color:var(--ink-soft); font-weight:600;}
+  .field input, .field select{
+    padding:10px 12px; border-radius:9px; border:1px solid var(--line); font-family:inherit;
+    font-size:13.5px; color:var(--ink); background:#fff;
+  }
+  .field input:focus, .field select:focus{outline:2px solid var(--accent); outline-offset:1px;}
+  .field.readonly input{background:var(--surface-2); color:var(--muted);}
+  .field .hint{font-size:11px; color:var(--muted);}
+  .status-picker{display:flex; gap:8px; flex-wrap:wrap;}
+  .status-opt{
+    display:flex; align-items:center; gap:7px; padding:9px 13px; border-radius:10px; border:1.5px solid var(--line);
+    cursor:pointer; font-size:13px; color:var(--ink-soft); background:#fff; font-weight:600;
+  }
+  .status-opt.selected{border-color:currentColor;}
+  .status-opt.selected.s-green{color:var(--green); background:var(--green-tint);}
+  .status-opt.selected.s-yellow{color:var(--yellow); background:var(--yellow-tint);}
+  .status-opt.selected.s-orange{color:var(--orange); background:var(--orange-tint);}
+  .status-opt.selected.s-red{color:var(--red); background:var(--red-tint);}
+
+  .prof-list{display:flex; flex-direction:column; gap:8px;}
+  .prof-row{
+    display:flex; align-items:center; gap:12px; background:var(--surface); border:1px solid var(--line);
+    border-radius:12px; padding:12px 16px; box-shadow:var(--shadow);
+  }
+  .prof-avatar{
+    width:38px; height:38px; border-radius:50%; background:var(--accent-tint); color:var(--accent);
+    display:flex; align-items:center; justify-content:center; font-weight:700; font-family:'Fraunces',serif; font-size:15px; flex-shrink:0;
+  }
+  .prof-name{font-weight:600; color:var(--ink); font-size:14px;}
+  .prof-spec{font-size:12.5px; color:var(--muted);}
+
+  .coming-soon{
+    display:flex; flex-direction:column; align-items:center; justify-content:center; padding:100px 20px;
+    color:var(--muted); text-align:center; gap:10px;
+  }
+  .coming-soon h3{font-family:'Fraunces',serif; color:var(--ink); font-size:20px; margin:0;}
+
+  /* ---------- ficha clínica ---------- */
+  .ficha-grid{display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;}
+  @media(max-width:700px){.ficha-grid{grid-template-columns:1fr;}}
+  .ficha-card{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:18px; box-shadow:var(--shadow);}
+  .ficha-card h3{font-family:'Fraunces',serif; font-size:16px; margin:0 0 14px; color:var(--ink);}
+  .atencion-row{display:flex; flex-direction:column; gap:4px; padding:12px 0; border-bottom:1px solid var(--line);}
+  .atencion-row:last-child{border-bottom:none;}
+  .atencion-head{display:flex; justify-content:space-between; align-items:center; gap:8px;}
+  .atencion-desc{font-size:13.5px; color:var(--ink); font-weight:600;}
+  .atencion-meta{font-size:12px; color:var(--muted);}
+  .atencion-facturar{font-size:11.5px; color:var(--accent); font-weight:700; background:var(--accent-tint); padding:3px 8px; border-radius:6px; border:none; cursor:pointer;}
+
+  /* odontograma */
+  .odontograma{display:flex; flex-direction:column; gap:6px;}
+  .odonto-row{display:flex; gap:4px; flex-wrap:wrap;}
+  .odonto-diente{
+    width:32px; height:44px; border-radius:8px; border:1.5px solid var(--line); background:#fff;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer;
+    font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:700; color:var(--ink-soft);
+    position:relative; transition:border-color .15s;
+  }
+  .odonto-diente:hover{border-color:var(--accent);}
+  .odonto-diente.tiene-trabajo{border-color:var(--primary); background:var(--primary-tint); color:var(--primary);}
+  .odonto-diente .trabajo-dot{width:8px; height:8px; border-radius:50%; background:var(--primary); margin-top:2px;}
+  .odonto-quad{font-size:10px; color:var(--muted); text-align:center; font-weight:600; margin-bottom:2px;}
+
+  /* firma digital */
+  .firma-canvas{
+    border:1.5px solid var(--line); border-radius:10px; background:#fff;
+    width:100%; height:160px; touch-action:none; cursor:crosshair; display:block;
+  }
+  .firma-canvas.firmado{border-color:var(--green);}
+  .firma-img{width:100%; height:160px; object-fit:contain; border:1.5px solid var(--green); border-radius:10px; background:#fff;}
+  .firma-meta{font-size:11.5px; color:var(--green); margin-top:6px; font-weight:600;}
+
+  /* ---------- obras sociales / nomenclador ---------- */
+  .os-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(200px,1fr)); gap:12px;}
+  .os-card{
+    background:var(--surface); border:1.5px solid var(--line); border-radius:12px; padding:16px;
+    cursor:pointer; transition:border-color .15s, box-shadow .15s; box-shadow:var(--shadow);
+  }
+  .os-card:hover{border-color:var(--accent);}
+  .os-card.selected{border-color:var(--accent); background:var(--accent-tint);}
+  .os-card-name{font-weight:700; color:var(--ink); font-size:14.5px; margin-bottom:4px;}
+  .os-card-count{font-size:12px; color:var(--muted);}
+  .os-card-del{float:right; background:none; border:none; color:var(--muted); cursor:pointer; padding:2px;}
+  .os-card-del:hover{color:var(--red);}
+
+  .code-chip{font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:700; color:var(--accent); background:var(--accent-tint); padding:3px 8px; border-radius:6px;}
+  .import-box{
+    background:var(--surface-2); border:1.5px dashed var(--line); border-radius:12px; padding:16px; margin-bottom:16px;
+    transition:background .15s, border-color .15s;
+  }
+  .import-box.dragging{background:var(--accent-tint); border-color:var(--accent);}
+  .import-box textarea{
+    width:100%; min-height:90px; border-radius:9px; border:1px solid var(--line); padding:10px 12px;
+    font-family:'JetBrains Mono',monospace; font-size:12px; resize:vertical; margin-top:8px;
+  }
+  .import-box .hint{font-size:12px; color:var(--muted); line-height:1.5;}
+
+  .tooth-picker{display:flex; flex-direction:column; gap:8px;}
+  .tooth-row{display:flex; gap:5px; flex-wrap:wrap;}
+  .tooth-btn{
+    width:34px; height:34px; border-radius:8px; border:1.5px solid var(--line); background:#fff;
+    font-family:'JetBrains Mono',monospace; font-size:11.5px; font-weight:700; color:var(--ink-soft);
+    cursor:pointer; display:flex; align-items:center; justify-content:center;
+  }
+  .tooth-btn:hover{border-color:var(--accent);}
+  .tooth-btn.selected{background:var(--accent); border-color:var(--accent); color:#fff;}
+  .tooth-quad-label{font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em; width:38px; display:flex; align-items:center;}
+
+  .cara-picker{display:flex; gap:8px;}
+  .cara-btn{
+    width:44px; height:44px; border-radius:10px; border:1.5px solid var(--line); background:#fff;
+    font-weight:700; font-size:13px; color:var(--ink-soft); cursor:pointer;
+  }
+  .cara-btn.selected{background:var(--primary); border-color:var(--primary); color:#fff;}
+  .cara-btn:disabled{opacity:.35; cursor:not-allowed;}
+  .pieza-cara-tag{font-family:'JetBrains Mono',monospace; font-size:11.5px; font-weight:700; color:var(--primary); background:var(--primary-tint); padding:3px 7px; border-radius:6px;}
+
+  /* ---------- liquidaciones ---------- */
+  .liqui-panel{display:grid; grid-template-columns:1fr 340px; gap:20px; align-items:start;}
+  @media (max-width: 1100px){ .liqui-panel{grid-template-columns:1fr;} }
+  .liqui-form{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); padding:20px;}
+  .liqui-receipt{
+    background:var(--primary-dark); color:#EAF4F2; border-radius:var(--radius); padding:22px;
+    box-shadow:0 16px 40px -18px rgba(9,75,69,0.55); position:sticky; top:20px;
+  }
+  .liqui-receipt-name{font-family:'Fraunces',serif; font-size:19px; font-weight:600; margin-bottom:2px;}
+  .liqui-receipt-period{font-size:12px; color:#9FC3BD; margin-bottom:16px;}
+  .liqui-row{display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px dashed rgba(234,244,242,0.15); font-size:13.5px;}
+  .liqui-row.neg{color:#F5B8AE;}
+  .liqui-row.pos{color:#A9E4C4;}
+  .liqui-row-label{color:#BFDAD5;}
+  .liqui-total{
+    display:flex; justify-content:space-between; align-items:baseline; margin-top:14px; padding-top:14px;
+    border-top:2px solid rgba(234,244,242,0.3);
+  }
+  .liqui-total-label{font-size:13px; color:#BFDAD5; font-weight:600;}
+  .liqui-total-num{font-family:'Fraunces',serif; font-size:26px; font-weight:700; color:#fff;}
+  .liqui-history-row td{vertical-align:middle;}
+
+  .toast{
+    position:fixed; bottom:26px; left:50%; transform:translateX(-50%); background:var(--ink);
+    color:#fff; padding:12px 20px; border-radius:10px; font-size:13.5px; box-shadow:var(--shadow); z-index:100;
+    display:flex; align-items:center; gap:8px; animation:toastIn .2s ease;
+  }
+  @keyframes toastIn{from{opacity:0; transform:translate(-50%,8px);} to{opacity:1; transform:translate(-50%,0);}}
+
+  ::-webkit-scrollbar{width:10px; height:10px;}
+  ::-webkit-scrollbar-thumb{background:#D3E1DE; border-radius:6px;}
+
+  @media (max-width: 880px){
+    .app{flex-direction:column;}
+    .sidebar{width:100%; flex-direction:row; align-items:center; padding:14px 18px; gap:16px;}
+    .brand-sub{display:none;}
+    .nav{flex-direction:row; overflow-x:auto;}
+    .nav-footer{display:none;}
+    .main{padding:20px;}
+    .stats{grid-template-columns:repeat(2,1fr);}
+    .grid2, .grid3{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script>
+const { useState, useEffect, useMemo, useRef } = React;
+
+// --- Conexión a Firebase (compartida entre las 3 odontólogas) ---
+const firebaseConfig = {
+  apiKey: "AIzaSyA_05J5BbErPvb-7EBSsaI71M2sECom7Sk",
+  authDomain: "odonto-bienestar.firebaseapp.com",
+  projectId: "odonto-bienestar",
+  storageBucket: "odonto-bienestar.firebasestorage.app",
+  messagingSenderId: "409958775253",
+  appId: "1:409958775253:web:a08f332b551880b9bc255c"
+};
+let fsdb = null;
+let fauth = null;
+let firebaseError = null;
+try{
+  firebase.initializeApp(firebaseConfig);
+  fsdb = firebase.firestore();
+  fauth = firebase.auth();
+}catch(e){
+  firebaseError = e;
+}
+
+// Reemplaza a storage: misma forma (get/set/delete/list), pero guarda en Firestore
+// para que las 3 lo vean en tiempo real en vez de guardar solo en este celular.
+const storage = {
+  async get(key, shared){
+    if(!fsdb) throw new Error('Firebase no disponible');
+    const doc = await fsdb.collection('datos').doc(key).get();
+    if(!doc.exists) throw new Error('not found');
+    return {key, value: doc.data().value, shared: !!shared};
+  },
+  async set(key, value, shared){
+    if(!fsdb) throw new Error('Firebase no disponible');
+    await fsdb.collection('datos').doc(key).set({value, actualizadoEl: Date.now()});
+    return {key, value, shared: !!shared};
+  },
+  async delete(key, shared){
+    if(!fsdb) throw new Error('Firebase no disponible');
+    await fsdb.collection('datos').doc(key).delete();
+    return {key, deleted:true, shared: !!shared};
+  },
+  async list(prefix, shared){
+    if(!fsdb) throw new Error('Firebase no disponible');
+    const snap = await fsdb.collection('datos').get();
+    let keys = snap.docs.map(d=>d.id);
+    if(prefix) keys = keys.filter(k=>k.startsWith(prefix));
+    return {keys, prefix, shared: !!shared};
+  }
+};
+
+function ToothIcon({size=22, color="currentColor"}){
+  return React.createElement('svg', {width:size, height:size, viewBox:"0 0 24 24", fill:"none"},
+    React.createElement('path', {
+      d:"M12 2C9.5 2 8 3.3 6.5 3.3 4.5 3.3 3 5.2 3 8c0 2.6 1 4 1.4 6.8.3 2.2.9 6.7 2.6 6.7 1.5 0 1.4-4.3 2.3-5.6.5-.8 1.1-1.1 1.7-1.1s1.2.3 1.7 1.1c.9 1.3.8 5.6 2.3 5.6 1.7 0 2.3-4.5 2.6-6.7C18 12 19 10.6 19 8c0-2.8-1.5-4.7-3.5-4.7C14 3.3 12.5 2 12 2z",
+      fill:color
+    })
+  );
+}
+const ICONS = {
+  search: React.createElement('svg',{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2},React.createElement('circle',{cx:11,cy:11,r:7}),React.createElement('line',{x1:21,y1:21,x2:16.65,y2:16.65})),
+  edit: React.createElement('svg',{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2},React.createElement('path',{d:"M12 20h9"}),React.createElement('path',{d:"M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4 12.5-12.5z"})),
+  trash: React.createElement('svg',{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2},React.createElement('path',{d:"M3 6h18"}),React.createElement('path',{d:"M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14z"})),
+  close: React.createElement('svg',{width:18,height:18,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2},React.createElement('line',{x1:18,y1:6,x2:6,y2:18}),React.createElement('line',{x1:6,y1:6,x2:18,y2:18})),
+  plus: React.createElement('svg',{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2.4},React.createElement('line',{x1:12,y1:5,x2:12,y2:19}),React.createElement('line',{x1:5,y1:12,x2:19,y2:12})),
+};
+
+const ESTADOS = [
+  {value:'activo', label:'Activo', color:'green'},
+  {value:'presupuesto', label:'Presupuesto pendiente', color:'yellow'},
+  {value:'esperando', label:'Esperando turno', color:'orange'},
+  {value:'inactivo', label:'Inactivo', color:'red'},
+];
+const estadoInfo = v => ESTADOS.find(e=>e.value===v) || ESTADOS[0];
+
+const ESTADOS_COBRO = [
+  {value:'pendiente', label:'Pendiente', color:'orange'},
+  {value:'parcial', label:'Parcial', color:'yellow'},
+  {value:'cobrado', label:'Cobrado', color:'green'},
+];
+const cobroInfo = v => ESTADOS_COBRO.find(e=>e.value===v) || ESTADOS_COBRO[0];
+
+const ESTADOS_PRESUPUESTO = [
+  {value:'pendiente', label:'Pendiente', color:'yellow'},
+  {value:'aceptado', label:'En tratamiento', color:'green'},
+  {value:'rechazado', label:'Rechazado', color:'red'},
+];
+const presuInfo = v => ESTADOS_PRESUPUESTO.find(e=>e.value===v) || ESTADOS_PRESUPUESTO[0];
+
+const FORMAS_PAGO = ['Efectivo', 'Transferencia', 'Tarjeta de débito', 'Tarjeta de crédito', 'Mixto'];
+
+const ESTADOS_COMISION = [
+  {value:'pendiente', label:'Pendiente de pago', color:'orange'},
+  {value:'pagada', label:'Comisión pagada', color:'green'},
+];
+const comisionInfo = v => ESTADOS_COMISION.find(e=>e.value===v) || ESTADOS_COMISION[0];
+
+const CUADRANTES = [
+  {label:'Sup. derecho', nums:[18,17,16,15,14,13,12,11]},
+  {label:'Sup. izquierdo', nums:[21,22,23,24,25,26,27,28]},
+  {label:'Inf. izquierdo', nums:[31,32,33,34,35,36,37,38]},
+  {label:'Inf. derecho', nums:[48,47,46,45,44,43,42,41]},
+];
+const CARAS = ['O','M','D','V','L','P'];
+const CARA_NOMBRE = {O:'Oclusal', M:'Mesial', D:'Distal', V:'Vestibular', L:'Lingual', P:'Palatino'};
+
+function money(n){
+  const num = Number(n)||0;
+  return num.toLocaleString('es-AR', {style:'currency', currency:'ARS', maximumFractionDigits:0});
+}
+
+// Parsea texto pegado desde Excel (separado por tabs o comas): codigo, descripcion, valor
+function parseNomencladorPaste(text){
+  return text.split('\n').map(l=>l.trim()).filter(Boolean).map(line=>{
+    const parts = line.includes('\t') ? line.split('\t') : line.split(',');
+    const codigo = (parts[0]||'').trim();
+    const descripcion = (parts[1]||'').trim();
+    const valorRaw = (parts[2]||'0').replace(/[^\d.,-]/g,'').replace(/\.(?=\d{3})/g,'').replace(',','.');
+    const valor = parseFloat(valorRaw) || 0;
+    return {codigo, descripcion, valor};
+  }).filter(r=>r.codigo);
+}
+
+function calcAge(dob){
+  if(!dob) return '';
+  const b = new Date(dob), t = new Date();
+  let age = t.getFullYear() - b.getFullYear();
+  const m = t.getMonth() - b.getMonth();
+  if(m < 0 || (m===0 && t.getDate() < b.getDate())) age--;
+  return isNaN(age) ? '' : age;
+}
+
+const emptyPaciente = {
+  id:null, apellido:'', nombre:'', dni:'', fechaNacimiento:'', sexo:'', celular:'', whatsapp:'',
+  email:'', direccion:'', localidad:'', ocupacion:'', obraSocial:'', numeroAfiliado:'',
+  profesionalPrincipal:'', especialidad:'', derivadoPor:'', estadoTratamiento:'', estado:'activo'
+};
+const emptyProf = { id:null, nombre:'', especialidad:'', porcentaje:50 };
+
+const emptyPrestacion = {
+  id:null, fecha:'', pacienteId:'', profesional:'', prestacion:'',
+  obraSocialId:'', codigo:'', piezaDentaria:'', caras:[],
+  obraSocial:0, particular:0, plus:0, estadoCobro:'pendiente'
+};
+const emptyPresupuesto = {
+  id:null, pacienteId:'', profesional:'', tratamientos:'', montoTotal:0,
+  formaPago:'Efectivo', cuotas:1, estado:'pendiente'
+};
+const emptyObraSocial = { id:null, nombre:'', porcentajeAOA:9 };
+const emptyDerivacion = {
+  id:null, fecha:'', pacienteId:'', quienDeriva:'', quienRecibe:'',
+  motivo:'', presupuestoId:'', porcentaje:5, comisionPagada:'pendiente'
+};
+const emptyAtencion = {
+  id:null, fecha:'', pacienteId:'', profesional:'', descripcion:'',
+  piezaDentaria:'', caras:[], obraSocialId:'', codigo:'',
+  montoOS:0, montoParticular:0, montoPlus:0, facturada:false, notas:''
+};
+const TEXTO_CONSENTIMIENTO = `CONSENTIMIENTO INFORMADO ODONTOLÓGICO
+
+Yo, el/la paciente (o su representante legal), declaro que:
+
+1. He sido informado/a sobre mi estado de salud bucal y los tratamientos propuestos.
+2. Comprendo que los tratamientos odontológicos, como cualquier procedimiento de salud, pueden presentar riesgos y complicaciones.
+3. He tenido la oportunidad de realizar preguntas y han sido respondidas satisfactoriamente.
+4. Autorizo al/la profesional a realizar los procedimientos necesarios para mi tratamiento, incluyendo radiografías, anestesia local, extracciones, restauraciones y demás tratamientos indicados.
+5. Me comprometo a informar sobre alergias, medicamentos que tomo y antecedentes médicos relevantes.
+6. Entiendo que puedo retirar este consentimiento en cualquier momento antes del inicio del tratamiento.
+
+El presente consentimiento fue firmado de manera digital en presencia del profesional interviniente.`;
+
+function Toast({msg, onDone}){
+  useEffect(()=>{ const t = setTimeout(onDone, 2200); return ()=>clearTimeout(t); },[]);
+  return React.createElement('div',{className:'toast'}, msg);
+}
+
+function App(){
+  const [nav, setNav] = useState('pacientes');
+  const [pacientes, setPacientes] = useState([]);
+  const [profesionales, setProfesionales] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState(null);
+  const [syncStatus, setSyncStatus] = useState('conectando'); // conectando | ok | error
+
+  const [search, setSearch] = useState('');
+  const [filterEstado, setFilterEstado] = useState('todos');
+
+  const [showPForm, setShowPForm] = useState(false);
+  const [editingP, setEditingP] = useState(null);
+  const [formP, setFormP] = useState(emptyPaciente);
+
+  const [showProfForm, setShowProfForm] = useState(false);
+  const [formProf, setFormProf] = useState(emptyProf);
+
+  const [prestaciones, setPrestaciones] = useState([]);
+  const [showPrestForm, setShowPrestForm] = useState(false);
+  const [editingPrest, setEditingPrest] = useState(null);
+  const [formPrest, setFormPrest] = useState(emptyPrestacion);
+  const [filterCobro, setFilterCobro] = useState('todos');
+
+  const [presupuestos, setPresupuestos] = useState([]);
+  const [showPresuForm, setShowPresuForm] = useState(false);
+  const [editingPresu, setEditingPresu] = useState(null);
+  const [formPresu, setFormPresu] = useState(emptyPresupuesto);
+  const [filterPresu, setFilterPresu] = useState('todos');
+
+  const [obrasSociales, setObrasSociales] = useState([]);
+  const [nomencladores, setNomencladores] = useState({}); // { [obraSocialId]: [{codigo,descripcion,valor}] }
+  const [formOSName, setFormOSName] = useState('');
+  const [selectedOS, setSelectedOS] = useState(null);
+  const [pasteText, setPasteText] = useState('');
+  const fileInputRef = useRef(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [newRow, setNewRow] = useState({codigo:'', descripcion:'', valor:''});
+
+  const [liquidaciones, setLiquidaciones] = useState([]);
+  const [liquiProf, setLiquiProf] = useState('');
+  const [liquiDesde, setLiquiDesde] = useState('');
+  const [liquiHasta, setLiquiHasta] = useState('');
+  const [liquiMateriales, setLiquiMateriales] = useState(0);
+  const [liquiComisiones, setLiquiComisiones] = useState(0);
+  const [valorEstampilla, setValorEstampilla] = useState(7000);
+
+  const [derivaciones, setDerivaciones] = useState([]);
+  const [showDerivForm, setShowDerivForm] = useState(false);
+  const [editingDeriv, setEditingDeriv] = useState(null);
+  const [formDeriv, setFormDeriv] = useState(emptyDerivacion);
+  const [filterComision, setFilterComision] = useState('todos');
+
+  const [fichasClinicas, setFichasClinicas] = useState({}); // {pacienteId: {atenciones:[], observaciones:'', firma:'', fechaFirma:'', odontograma:{}}}
+  const [fichaActualPacId, setFichaActualPacId] = useState(null);
+  const [showFicha, setShowFicha] = useState(false);
+  const [showAtencionForm, setShowAtencionForm] = useState(false);
+  const [formAtencion, setFormAtencion] = useState(emptyAtencion);
+  const [editingAtencion, setEditingAtencion] = useState(null);
+  const [showConsentimiento, setShowConsentimiento] = useState(false);
+  const canvasRef = useRef(null);
+  const [firmando, setFirmando] = useState(false);
+  const [firmaData, setFirmaData] = useState(null);
+
+  const [user, setUser] = useState(undefined); // undefined=verificando, null=sin sesión, objeto=logueado
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPass, setLoginPass] = useState('');
+  const [loginError, setLoginError] = useState('');
+  const [loginBusy, setLoginBusy] = useState(false);
+
+  useEffect(()=>{
+    if(!fauth){ setUser(null); return; }
+  useEffect(()=>{
+    if(!fauth){ setUser(null); return; }
+    let resolved = false;
+    const timer = setTimeout(()=>{ if(!resolved){ resolved=true; setUser(null); } }, 5000);
+    const unsub = fauth.onAuthStateChanged(u => {
+      if(!resolved){ resolved=true; clearTimeout(timer); setUser(u); }
+    });
+    return ()=>{ clearTimeout(timer); unsub(); };
+  },[]);
+  },[]);
+
+  useEffect(()=>{ if(user) loadAll(); },[user]);
+
+  async function handleLogin(e){
+    e.preventDefault();
+    setLoginError(''); setLoginBusy(true);
+    try{
+      await fauth.signInWithEmailAndPassword(loginEmail.trim(), loginPass);
+    }catch(err){
+      setLoginError('Usuario o contraseña incorrectos.');
+    }
+    setLoginBusy(false);
+  }
+  async function handleLogout(){
+    if(!confirm('¿Cerrar sesión en este celular?')) return;
+    await fauth.signOut();
+  }
+
+  async function loadAll(){
+    setLoading(true);
+    if(firebaseError || !fsdb){
+      setSyncStatus('error');
+      setLoading(false);
+      setToast('No se pudo conectar con la base de datos en la nube. Revisá tu conexión a internet.');
+      return;
+    }
+    try{
+      await fsdb.collection('datos').limit(1).get();
+      setSyncStatus('ok');
+    }catch(e){
+      setSyncStatus('error');
+      setLoading(false);
+      setToast('No se pudo conectar con la base de datos en la nube. Revisá tu conexión a internet.');
+      return;
+    }
+    try{
+      const p = await storage.get('pacientes', true);
+      setPacientes(p ? JSON.parse(p.value) : []);
+    }catch(e){ setPacientes([]); }
+    try{
+      const pr = await storage.get('profesionales', true);
+      setProfesionales(pr ? JSON.parse(pr.value) : []);
+    }catch(e){ setProfesionales([]); }
+    try{
+      const pt = await storage.get('prestaciones', true);
+      setPrestaciones(pt ? JSON.parse(pt.value) : []);
+    }catch(e){ setPrestaciones([]); }
+    try{
+      const pb = await storage.get('presupuestos', true);
+      setPresupuestos(pb ? JSON.parse(pb.value) : []);
+    }catch(e){ setPresupuestos([]); }
+    try{
+      const os = await storage.get('obrasSociales', true);
+      setObrasSociales(os ? JSON.parse(os.value) : []);
+    }catch(e){ setObrasSociales([]); }
+    try{
+      const nc = await storage.get('nomencladores', true);
+      setNomencladores(nc ? JSON.parse(nc.value) : {});
+    }catch(e){ setNomencladores({}); }
+    try{
+      const lq = await storage.get('liquidaciones', true);
+      setLiquidaciones(lq ? JSON.parse(lq.value) : []);
+    }catch(e){ setLiquidaciones([]); }
+    try{
+      const cfg = await storage.get('configuracion', true);
+      if(cfg){ const c = JSON.parse(cfg.value); if(c.valorEstampilla!=null) setValorEstampilla(c.valorEstampilla); }
+    }catch(e){ /* usa el valor por defecto */ }
+    try{
+      const dv = await storage.get('derivaciones', true);
+      setDerivaciones(dv ? JSON.parse(dv.value) : []);
+    }catch(e){ setDerivaciones([]); }
+    try{
+      const fc = await storage.get('fichasClinicas', true);
+      setFichasClinicas(fc ? JSON.parse(fc.value) : {});
+    }catch(e){ setFichasClinicas({}); }
+    setLoading(false);
+  }
+
+  async function savePacientes(list){
+    setPacientes(list);
+    try{ await storage.set('pacientes', JSON.stringify(list), true); }
+    catch(e){ setToast('No se pudo guardar. Reintentá.'); }
+  }
+  async function saveProfesionales(list){
+    setProfesionales(list);
+    try{ await storage.set('profesionales', JSON.stringify(list), true); }
+    catch(e){ setToast('No se pudo guardar. Reintentá.'); }
+  }
+
+  function nextId(){
+    const nums = pacientes.map(p => parseInt((p.id||'P00000').replace('P',''),10)).filter(n=>!isNaN(n));
+    const next = (nums.length ? Math.max(...nums) : 0) + 1;
+    return 'P' + String(next).padStart(5,'0');
+  }
+
+  function openNewPaciente(){
+    setEditingP(null);
+    setFormP({...emptyPaciente, id: nextId()});
+    setShowPForm(true);
+  }
+  function openEditPaciente(p){
+    setEditingP(p.id);
+    setFormP({...p});
+    setShowPForm(true);
+  }
+  async function deletePaciente(id){
+    if(!confirm('¿Eliminar esta ficha de paciente? Esta acción no se puede deshacer.')) return;
+    await savePacientes(pacientes.filter(p=>p.id!==id));
+    setToast('Paciente eliminado.');
+  }
+  async function submitPaciente(e){
+    e.preventDefault();
+    if(!formP.apellido.trim() || !formP.nombre.trim()){
+      setToast('Apellido y nombre son obligatorios.'); return;
+    }
+    if(editingP){
+      await savePacientes(pacientes.map(p => p.id===editingP ? formP : p));
+      setToast('Ficha actualizada.');
+    }else{
+      await savePacientes([formP, ...pacientes]);
+      setToast('Paciente creado: ' + formP.id);
+    }
+    setShowPForm(false);
+  }
+
+  function openNewProf(){ setFormProf(emptyProf); setShowProfForm(true); }
+  function openEditProf(pr){ setFormProf({...emptyProf, ...pr}); setShowProfForm(true); }
+  async function submitProf(e){
+    e.preventDefault();
+    if(!formProf.nombre.trim()){ setToast('El nombre es obligatorio.'); return; }
+    const withId = {...formProf, id: formProf.id || ('PR' + Date.now())};
+    await saveProfesionales([withId, ...profesionales.filter(p=>p.id!==withId.id)]);
+    setShowProfForm(false);
+    setToast('Profesional guardado.');
+  }
+  async function deleteProf(id){
+    if(!confirm('¿Eliminar este profesional?')) return;
+    await saveProfesionales(profesionales.filter(p=>p.id!==id));
+    setToast('Profesional eliminado.');
+  }
+
+  function pacienteLabel(id){
+    const p = pacientes.find(x=>x.id===id);
+    return p ? (p.apellido + ', ' + p.nombre) : '—';
+  }
+
+  async function savePrestaciones(list){
+    setPrestaciones(list);
+    try{ await storage.set('prestaciones', JSON.stringify(list), true); }
+    catch(e){ setToast('No se pudo guardar. Reintentá.'); }
+  }
+  function nextPrestId(){
+    const nums = prestaciones.map(p => parseInt((p.id||'F00000').replace('F',''),10)).filter(n=>!isNaN(n));
+    const next = (nums.length ? Math.max(...nums) : 0) + 1;
+    return 'F' + String(next).padStart(5,'0');
+  }
+  function openNewPrestacion(){
+    setEditingPrest(null);
+    setFormPrest({...emptyPrestacion, id: nextPrestId(), fecha: new Date().toISOString().slice(0,10)});
+    setShowPrestForm(true);
+  }
+  function openEditPrestacion(p){ setEditingPrest(p.id); setFormPrest({...p}); setShowPrestForm(true); }
+  async function deletePrestacion(id){
+    if(!confirm('¿Eliminar esta prestación? También se quitará de las liquidaciones y estadísticas.')) return;
+    await savePrestaciones(prestaciones.filter(p=>p.id!==id));
+    setToast('Prestación eliminada.');
+  }
+  async function submitPrestacion(e){
+    e.preventDefault();
+    if(!formPrest.pacienteId){ setToast('Elegí un paciente.'); return; }
+    if(!formPrest.prestacion.trim()){ setToast('Describí la prestación realizada.'); return; }
+    if(editingPrest){
+      await savePrestaciones(prestaciones.map(p=>p.id===editingPrest?formPrest:p));
+      setToast('Prestación actualizada.');
+    }else{
+      await savePrestaciones([formPrest, ...prestaciones]);
+      setToast('Prestación registrada: ' + formPrest.id);
+    }
+    setShowPrestForm(false);
+  }
+
+  async function savePresupuestos(list){
+    setPresupuestos(list);
+    try{ await storage.set('presupuestos', JSON.stringify(list), true); }
+    catch(e){ setToast('No se pudo guardar. Reintentá.'); }
+  }
+  function nextPresuId(){
+    const nums = presupuestos.map(p => parseInt((p.id||'PP0000').replace('PP',''),10)).filter(n=>!isNaN(n));
+    const next = (nums.length ? Math.max(...nums) : 0) + 1;
+    return 'PP' + String(next).padStart(4,'0');
+  }
+  function openNewPresupuesto(){
+    setEditingPresu(null);
+    setFormPresu({...emptyPresupuesto, id: nextPresuId()});
+    setShowPresuForm(true);
+  }
+  function openEditPresupuesto(p){ setEditingPresu(p.id); setFormPresu({...p}); setShowPresuForm(true); }
+  async function deletePresupuesto(id){
+    if(!confirm('¿Eliminar este presupuesto?')) return;
+    await savePresupuestos(presupuestos.filter(p=>p.id!==id));
+    setToast('Presupuesto eliminado.');
+  }
+  async function submitPresupuesto(e){
+    e.preventDefault();
+    if(!formPresu.pacienteId){ setToast('Elegí un paciente.'); return; }
+    if(editingPresu){
+      await savePresupuestos(presupuestos.map(p=>p.id===editingPresu?formPresu:p));
+      setToast(formPresu.estado==='aceptado' ? 'Presupuesto aceptado · paciente en tratamiento.' : 'Presupuesto actualizado.');
+    }else{
+      await savePresupuestos([formPresu, ...presupuestos]);
+      setToast('Presupuesto creado: ' + formPresu.id);
+    }
+    setShowPresuForm(false);
+  }
+
+  async function saveObrasSociales(list){
+    setObrasSociales(list);
+    try{ await storage.set('obrasSociales', JSON.stringify(list), true); }
+    catch(e){ setToast('No se pudo guardar. Reintentá.'); }
+  }
+  async function saveNomencladores(map){
+    setNomencladores(map);
+    try{ await storage.set('nomencladores', JSON.stringify(map), true); }
+    catch(e){ setToast('No se pudo guardar. Reintentá.'); }
+  }
+  async function addObraSocial(e){
+    e.preventDefault();
+    if(!formOSName.trim()) return;
+    const os = {id:'OS'+Date.now(), nombre:formOSName.trim(), porcentajeAOA:9};
+    await saveObrasSociales([os, ...obrasSociales]);
+    setFormOSName('');
+    setToast('Obra social agregada.');
+  }
+  async function updatePctAOA(id, pct){
+    await saveObrasSociales(obrasSociales.map(o=>o.id===id?{...o, porcentajeAOA: pct}:o));
+  }
+  async function deleteObraSocial(id){
+    if(!confirm('¿Eliminar esta obra social y su planilla de aranceles?')) return;
+    await saveObrasSociales(obrasSociales.filter(o=>o.id!==id));
+    const next = {...nomencladores}; delete next[id];
+    await saveNomencladores(next);
+    if(selectedOS===id) setSelectedOS(null);
+    setToast('Obra social eliminada.');
+  }
+  async function importPaste(){
+    if(!selectedOS || !pasteText.trim()) return;
+    const rows = parseNomencladorPaste(pasteText);
+    if(rows.length===0){ setToast('No se reconoció ningún código. Revisá el formato.'); return; }
+    const existing = nomencladores[selectedOS] || [];
+    const byCode = {}; existing.forEach(r=>byCode[r.codigo]=r); rows.forEach(r=>byCode[r.codigo]=r);
+    await saveNomencladores({...nomencladores, [selectedOS]: Object.values(byCode)});
+    setPasteText('');
+    setToast(rows.length + ' códigos cargados.');
+  }
+  function readDroppedFile(file){
+    if(!file){ return; }
+    if(!/\.(txt|csv|tsv)$/i.test(file.name)){
+      setToast('Ese archivo no se puede leer directo (usá .txt o .csv). Abrilo y pegá el contenido en el cuadro.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = String(ev.target.result || '')
+        .split('\n')
+        .filter(l => !l.trim().startsWith('#'))
+        .join('\n')
+        .trim();
+      setPasteText(text);
+      setToast('Archivo "' + file.name + '" cargado — revisá y tocá "Importar planilla".');
+    };
+    reader.onerror = () => setToast('No se pudo leer el archivo.');
+    reader.readAsText(file, 'utf-8');
+  }
+  function handleDrop(e){
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files && e.dataTransfer.files[0];
+    readDroppedFile(file);
+  }
+  function handleFilePick(e){
+    const file = e.target.files && e.target.files[0];
+    readDroppedFile(file);
+    e.target.value = '';
+  }
+  async function addNomencladorRow(e){
+    e.preventDefault();
+    if(!selectedOS || !newRow.codigo.trim()) return;
+    const existing = (nomencladores[selectedOS] || []).filter(r=>r.codigo!==newRow.codigo.trim());
+    const row = {codigo:newRow.codigo.trim(), descripcion:newRow.descripcion.trim(), valor:parseFloat(newRow.valor)||0};
+    await saveNomencladores({...nomencladores, [selectedOS]: [row, ...existing]});
+    setNewRow({codigo:'', descripcion:'', valor:''});
+  }
+  async function deleteNomencladorRow(codigo){
+    const existing = (nomencladores[selectedOS] || []).filter(r=>r.codigo!==codigo);
+    await saveNomencladores({...nomencladores, [selectedOS]: existing});
+  }
+  function osNombre(id){ const o = obrasSociales.find(x=>x.id===id); return o ? o.nombre : ''; }
+  function toggleCara(c){
+    setFormPrest(f=>{
+      const has = f.caras.includes(c);
+      if(has) return {...f, caras: f.caras.filter(x=>x!==c)};
+      if(f.caras.length>=3) return f;
+      return {...f, caras:[...f.caras, c]};
+    });
+  }
+  function applyCodigo(codigo){
+    const list = nomencladores[formPrest.obraSocialId] || [];
+    const found = list.find(r=>r.codigo===codigo);
+    setFormPrest(f=>({
+      ...f, codigo,
+      prestacion: found ? found.descripcion : f.prestacion,
+      obraSocial: found ? found.valor : f.obraSocial
+    }));
+  }
+
+  async function saveLiquidaciones(list){
+    setLiquidaciones(list);
+    try{ await storage.set('liquidaciones', JSON.stringify(list), true); }
+    catch(e){ setToast('No se pudo guardar. Reintentá.'); }
+  }
+  async function updateValorEstampilla(v){
+    const num = Number(v)||0;
+    setValorEstampilla(num);
+    try{ await storage.set('configuracion', JSON.stringify({valorEstampilla:num}), true); }
+    catch(e){ setToast('No se pudo guardar. Reintentá.'); }
+  }
+
+  async function saveDerivaciones(list){
+    setDerivaciones(list);
+    try{ await storage.set('derivaciones', JSON.stringify(list), true); }
+    catch(e){ setToast('No se pudo guardar. Reintentá.'); }
+  }
+  function nextDerivId(){
+    const nums = derivaciones.map(d => parseInt((d.id||'D0000').replace('D',''),10)).filter(n=>!isNaN(n));
+    const next = (nums.length ? Math.max(...nums) : 0) + 1;
+    return 'D' + String(next).padStart(4,'0');
+  }
+  function openNewDerivacion(){
+    setEditingDeriv(null);
+    setFormDeriv({...emptyDerivacion, id: nextDerivId(), fecha: new Date().toISOString().slice(0,10)});
+    setShowDerivForm(true);
+  }
+  function openEditDerivacion(d){ setEditingDeriv(d.id); setFormDeriv({...d}); setShowDerivForm(true); }
+  async function deleteDerivacion(id){
+    if(!confirm('¿Eliminar esta derivación?')) return;
+    await saveDerivaciones(derivaciones.filter(d=>d.id!==id));
+    setToast('Derivación eliminada.');
+  }
+  async function submitDerivacion(e){
+    e.preventDefault();
+    if(!formDeriv.pacienteId){ setToast('Elegí un paciente.'); return; }
+    if(!formDeriv.quienDeriva.trim() || !formDeriv.quienRecibe.trim()){ setToast('Completá quién deriva y quién recibe.'); return; }
+    if(editingDeriv){
+      await saveDerivaciones(derivaciones.map(d=>d.id===editingDeriv?formDeriv:d));
+      setToast('Derivación actualizada.');
+    }else{
+      await saveDerivaciones([formDeriv, ...derivaciones]);
+      setToast('Derivación registrada: ' + formDeriv.id);
+    }
+    setShowDerivForm(false);
+  }
+  function presupuestoLabel(id){
+    const p = presupuestos.find(x=>x.id===id);
+    return p ? (p.id + ' — ' + money(p.montoTotal)) : '—';
+  }
+  function comisionMontoDe(d){
+    const presu = presupuestos.find(p=>p.id===d.presupuestoId);
+    const base = presu ? Number(presu.montoTotal)||0 : 0;
+    return base * (Number(d.porcentaje)||0)/100;
+  }
+
+  async function saveFichasClinicas(map){
+    setFichasClinicas(map);
+    try{ await storage.set('fichasClinicas', JSON.stringify(map), true); }
+    catch(e){ setToast('No se pudo guardar la ficha clínica.'); }
+  }
+  function getFicha(pacId){ return fichasClinicas[pacId] || {atenciones:[], observaciones:'', firma:'', fechaFirma:'', odontograma:{}}; }
+
+  function openFicha(pacId){ setFichaActualPacId(pacId); setShowFicha(true); setFirmaData(null); }
+
+  async function saveObservaciones(pacId, obs){
+    const f = getFicha(pacId);
+    await saveFichasClinicas({...fichasClinicas, [pacId]: {...f, observaciones:obs}});
+  }
+  async function saveOdontograma(pacId, pieza, valor){
+    const f = getFicha(pacId);
+    const od = {...(f.odontograma||{}), [pieza]: valor};
+    await saveFichasClinicas({...fichasClinicas, [pacId]: {...f, odontograma:od}});
+  }
+
+  function openNuevaAtencion(pacId){
+    setEditingAtencion(null);
+    setFormAtencion({...emptyAtencion, id:'A'+Date.now(), fecha:new Date().toISOString().slice(0,10), pacienteId:pacId, profesional: profesionales[0]?.nombre||''});
+    setShowAtencionForm(true);
+  }
+  async function submitAtencion(e){
+    e.preventDefault();
+    if(!formAtencion.descripcion.trim()){ setToast('Describí la prestación.'); return; }
+    const f = getFicha(formAtencion.pacienteId);
+    const atenciones = editingAtencion
+      ? f.atenciones.map(a=>a.id===editingAtencion?formAtencion:a)
+      : [formAtencion, ...(f.atenciones||[])];
+    await saveFichasClinicas({...fichasClinicas, [formAtencion.pacienteId]: {...f, atenciones}});
+    setShowAtencionForm(false);
+    setToast('Atención registrada en la ficha.');
+  }
+  async function deleteAtencion(pacId, atencionId){
+    if(!confirm('¿Eliminar esta atención de la ficha?')) return;
+    const f = getFicha(pacId);
+    await saveFichasClinicas({...fichasClinicas, [pacId]: {...f, atenciones: f.atenciones.filter(a=>a.id!==atencionId)}});
+  }
+  async function facturarAtencion(pacId, a){
+    if(a.facturada){ setToast('Esta atención ya fue facturada.'); return; }
+    const f = getFicha(pacId);
+    const nextId = 'F' + String((prestaciones.length+1)).padStart(5,'0');
+    const nueva = {
+      id:nextId, fecha:a.fecha, pacienteId:a.pacienteId, profesional:a.profesional,
+      prestacion:a.descripcion, obraSocialId:a.obraSocialId, codigo:a.codigo,
+      piezaDentaria:a.piezaDentaria, caras:a.caras||[],
+      obraSocial:Number(a.montoOS)||0, particular:Number(a.montoParticular)||0, plus:Number(a.montoPlus)||0,
+      estadoCobro:'pendiente'
+    };
+    await savePrestaciones([nueva, ...prestaciones]);
+    const atenciones = f.atenciones.map(x=>x.id===a.id?{...x, facturada:true}:x);
+    await saveFichasClinicas({...fichasClinicas, [pacId]: {...f, atenciones}});
+    setToast('Prestación creada: ' + nextId + ' · Lista para cobrar.');
+  }
+
+  // Firma digital
+  function initCanvas(){
+    const canvas = canvasRef.current;
+    if(!canvas) return;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.strokeStyle = '#12302C'; ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    let drawing = false;
+    function pos(e){ const r=canvas.getBoundingClientRect(); const src=e.touches?e.touches[0]:e; return {x:(src.clientX-r.left)*(canvas.width/r.width), y:(src.clientY-r.top)*(canvas.height/r.height)}; }
+    canvas.onmousedown = canvas.ontouchstart = e=>{ e.preventDefault(); drawing=true; const p=pos(e); ctx.beginPath(); ctx.moveTo(p.x,p.y); };
+    canvas.onmousemove = canvas.ontouchmove = e=>{ e.preventDefault(); if(!drawing) return; const p=pos(e); ctx.lineTo(p.x,p.y); ctx.stroke(); };
+    canvas.onmouseup = canvas.ontouchend = ()=>{ drawing=false; };
+  }
+  useEffect(()=>{ if(showConsentimiento) setTimeout(initCanvas, 100); },[showConsentimiento]);
+
+  async function guardarFirma(pacId){
+    const canvas = canvasRef.current;
+    if(!canvas){ setToast('No se encontró el canvas de firma.'); return; }
+    const data = canvas.toDataURL('image/png');
+    const fecha = new Date().toLocaleString('es-AR');
+    const f = getFicha(pacId);
+    await saveFichasClinicas({...fichasClinicas, [pacId]: {...f, firma:data, fechaFirma:fecha}});
+    setFirmaData({data, fecha});
+    setShowConsentimiento(false);
+    setToast('Consentimiento firmado y guardado.');
+  }
+  function limpiarFirma(){
+    const canvas = canvasRef.current;
+    if(canvas){ const ctx=canvas.getContext('2d'); ctx.clearRect(0,0,canvas.width,canvas.height); }
+  }
+  function nextLiquiId(){
+    const nums = liquidaciones.map(l => parseInt((l.id||'L0000').replace('L',''),10)).filter(n=>!isNaN(n));
+    const next = (nums.length ? Math.max(...nums) : 0) + 1;
+    return 'L' + String(next).padStart(4,'0');
+  }
+  async function generarLiquidacion(){
+    if(!liquiProf){ setToast('Elegí un profesional.'); return; }
+    if(!liquiDesde || !liquiHasta){ setToast('Elegí el período (desde/hasta).'); return; }
+    const prof = profesionales.find(p=>p.nombre===liquiProf);
+    const pct = prof ? (Number(prof.porcentaje)||50) : 50;
+    const record = {
+      id: nextLiquiId(), profesional: liquiProf, desde: liquiDesde, hasta: liquiHasta,
+      obraSocialBruto: liquiSums.obraSocialBruto, particular: liquiSums.particular, plus: liquiSums.plus,
+      aoaDescuento: liquiSums.aoaDescuento, totalBruto: liquiSums.totalBruto, totalNeto: liquiSums.totalNeto,
+      porcentaje: pct, mitadProfesional: liquiMitad,
+      cantEstampillas: liquiSums.cantEstampillas, valorEstampilla, estampillasTotal: liquiEstampillasTotal,
+      materiales: Number(liquiMateriales)||0, comisiones: Number(liquiComisiones)||0,
+      saldoFinal: liquiSaldoFinal, generadaEl: new Date().toISOString().slice(0,10)
+    };
+    await saveLiquidaciones([record, ...liquidaciones]);
+    setToast('Liquidación generada: ' + record.id);
+    setLiquiMateriales(0); setLiquiComisiones(0);
+  }
+  async function deleteLiquidacion(id){
+    if(!confirm('¿Eliminar esta liquidación del historial?')) return;
+    await saveLiquidaciones(liquidaciones.filter(l=>l.id!==id));
+    setToast('Liquidación eliminada.');
+  }
+
+  const filtered = useMemo(()=>{
+    return pacientes.filter(p=>{
+      if(filterEstado!=='todos' && p.estado!==filterEstado) return false;
+      if(!search.trim()) return true;
+      const s = search.toLowerCase();
+      return [p.apellido,p.nombre,p.dni,p.id,p.celular,p.email].join(' ').toLowerCase().includes(s);
+    });
+  },[pacientes, search, filterEstado]);
+
+  const counts = useMemo(()=>{
+    const c = {activo:0, presupuesto:0, esperando:0, inactivo:0};
+    pacientes.forEach(p=>{ if(c[p.estado]!==undefined) c[p.estado]++; });
+    return c;
+  },[pacientes]);
+
+  const filteredPrest = useMemo(()=>{
+    return prestaciones.filter(p => filterCobro==='todos' ? true : p.estadoCobro===filterCobro)
+      .sort((a,b)=> (b.fecha||'').localeCompare(a.fecha||''));
+  },[prestaciones, filterCobro]);
+
+  const prestTotals = useMemo(()=>{
+    const t = {facturado:0, cobrado:0, pendiente:0};
+    prestaciones.forEach(p=>{
+      const total = (Number(p.obraSocial)||0) + (Number(p.particular)||0) + (Number(p.plus)||0);
+      t.facturado += total;
+      if(p.estadoCobro==='cobrado') t.cobrado += total;
+      else t.pendiente += total;
+    });
+    return t;
+  },[prestaciones]);
+
+  const filteredPresu = useMemo(()=>{
+    return presupuestos.filter(p => filterPresu==='todos' ? true : p.estado===filterPresu);
+  },[presupuestos, filterPresu]);
+
+  const presuTotals = useMemo(()=>{
+    const t = {total:0, enTratamiento:0, pendientes:0, montoAceptado:0};
+    presupuestos.forEach(p=>{
+      t.total++;
+      if(p.estado==='aceptado'){ t.enTratamiento++; t.montoAceptado += Number(p.montoTotal)||0; }
+      if(p.estado==='pendiente') t.pendientes++;
+    });
+    return t;
+  },[presupuestos]);
+
+  const liquiPrestaciones = useMemo(()=>{
+    if(!liquiProf) return [];
+    return prestaciones.filter(p =>
+      p.profesional===liquiProf && p.estadoCobro==='cobrado' &&
+      (!liquiDesde || p.fecha>=liquiDesde) && (!liquiHasta || p.fecha<=liquiHasta)
+    );
+  },[prestaciones, liquiProf, liquiDesde, liquiHasta]);
+
+  const liquiSums = useMemo(()=>{
+    const s = {obraSocialBruto:0, particular:0, plus:0, aoaDescuento:0, totalBruto:0, totalNeto:0};
+    const fichasMes = new Set(); // paciente + obraSocial + año-mes
+    liquiPrestaciones.forEach(p=>{
+      const os = Number(p.obraSocial)||0;
+      const part = Number(p.particular)||0;
+      const plus = Number(p.plus)||0;
+      const osInfo = obrasSociales.find(o=>o.id===p.obraSocialId);
+      const pctAOA = osInfo ? (Number(osInfo.porcentajeAOA)||0) : 0;
+      const baseFacturadaAOA = os + part; // el Plus no pasa por la obra social / AOA
+      const descuento = baseFacturadaAOA * pctAOA/100;
+      s.obraSocialBruto += os;
+      s.particular += part;
+      s.plus += plus;
+      s.aoaDescuento += descuento;
+      s.totalBruto += os + part + plus;
+      s.totalNeto += (os + part - descuento) + plus;
+      if(p.obraSocialId && p.fecha){
+        fichasMes.add(p.pacienteId + '|' + p.obraSocialId + '|' + p.fecha.slice(0,7));
+      }
+    });
+    s.cantEstampillas = fichasMes.size;
+    return s;
+  },[liquiPrestaciones, obrasSociales]);
+
+  const liquiEstampillasTotal = liquiSums.cantEstampillas * valorEstampilla;
+
+  const liquiPct = useMemo(()=>{
+    const prof = profesionales.find(p=>p.nombre===liquiProf);
+    return prof ? (Number(prof.porcentaje)||50) : 50;
+  },[profesionales, liquiProf]);
+
+  const liquiMitad = liquiSums.totalNeto * liquiPct/100;
+  const liquiSaldoFinal = liquiMitad - liquiEstampillasTotal - (Number(liquiMateriales)||0) + (Number(liquiComisiones)||0);
+
+  const liquiDerivacionesPagadas = useMemo(()=>{
+    if(!liquiProf) return [];
+    return derivaciones.filter(d =>
+      d.quienDeriva===liquiProf && d.comisionPagada==='pagada' &&
+      (!liquiDesde || d.fecha>=liquiDesde) && (!liquiHasta || d.fecha<=liquiHasta)
+    );
+  },[derivaciones, presupuestos, liquiProf, liquiDesde, liquiHasta]);
+
+  const liquiComisionesAuto = useMemo(()=>{
+    return liquiDerivacionesPagadas.reduce((sum,d)=>sum+comisionMontoDe(d), 0);
+  },[liquiDerivacionesPagadas, presupuestos]);
+
+  const filteredDeriv = useMemo(()=>{
+    return derivaciones.filter(d => filterComision==='todos' ? true : d.comisionPagada===filterComision)
+      .sort((a,b)=> (b.fecha||'').localeCompare(a.fecha||''));
+  },[derivaciones, filterComision]);
+
+  const derivTotals = useMemo(()=>{
+    const t = {pendiente:0, pagada:0};
+    derivaciones.forEach(d=>{
+      const m = comisionMontoDe(d);
+      if(d.comisionPagada==='pagada') t.pagada += m; else t.pendiente += m;
+    });
+    return t;
+  },[derivaciones, presupuestos]);
+
+  const navItems = [
+    {key:'pacientes', label:'Pacientes', enabled:true},
+    {key:'profesionales', label:'Profesionales', enabled:true},
+    {key:'obrasSociales', label:'Obras sociales', enabled:true},
+    {key:'prestaciones', label:'Prestaciones', enabled:true},
+    {key:'presupuestos', label:'Presupuestos', enabled:true},
+    {key:'liquidaciones', label:'Liquidaciones', enabled:true},
+    {key:'derivaciones', label:'Derivaciones', enabled:true},
+    {key:'fichaClinica', label:'Ficha clínica', enabled:true},
+    {key:'dashboard', label:'Dashboard', enabled:false},
+  ];
+
+  if(user===undefined){
+    return React.createElement('div', {style:{minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'var(--bg)', color:'var(--muted)', fontSize:'14px'}}, 'Verificando sesión...');
+  }
+
+  if(user===null){
+    return React.createElement('div', {style:{minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'var(--bg)', padding:'20px'}},
+      React.createElement('form', {onSubmit:handleLogin, style:{background:'var(--surface)', border:'1px solid var(--line)', borderRadius:'18px', padding:'32px', width:'100%', maxWidth:'360px', boxShadow:'var(--shadow)'}},
+        React.createElement('div', {style:{display:'flex', alignItems:'center', gap:'10px', marginBottom:'22px'}},
+          React.createElement(ToothIcon, {size:26, color:'var(--primary)'}),
+          React.createElement('div', {className:'brand-text', style:{color:'var(--ink)'}}, 'Consultorio')
+        ),
+        !fauth && React.createElement('p', {style:{color:'var(--red)', fontSize:'13px', marginBottom:'14px'}}, 'No se pudo conectar con el sistema de acceso. Revisá tu conexión a internet.'),
+        React.createElement('div', {className:'field', style:{marginBottom:'14px'}},
+          React.createElement('label', null, 'Usuario (email)'),
+          React.createElement('input', {type:'email', value:loginEmail, onChange:e=>setLoginEmail(e.target.value), required:true, autoFocus:true})
+        ),
+        React.createElement('div', {className:'field', style:{marginBottom:'18px'}},
+          React.createElement('label', null, 'Contraseña'),
+          React.createElement('input', {type:'password', value:loginPass, onChange:e=>setLoginPass(e.target.value), required:true})
+        ),
+        loginError && React.createElement('p', {style:{color:'var(--red)', fontSize:'13px', marginBottom:'14px'}}, loginError),
+        React.createElement('button', {type:'submit', className:'btn btn-primary', style:{width:'100%', justifyContent:'center'}, disabled:loginBusy}, loginBusy?'Ingresando...':'Ingresar')
+      )
+    );
+  }
+
+  return React.createElement(React.Fragment, null,
+    React.createElement('div', {className:'sync-bar'},
+      React.createElement('div', {style:{display:'flex', alignItems:'center', gap:'8px'}},
+        React.createElement('span', {className:'dot', style:{
+          background: syncStatus==='ok' ? '#4ADE80' : syncStatus==='error' ? '#F87171' : '#FACC15'
+        }}),
+        React.createElement('span', null, syncStatus==='ok' ? 'Sincronizado con la nube' : syncStatus==='error' ? 'Sin conexión — revisá internet' : 'Conectando...')
+      ),
+      React.createElement('div', {style:{display:'flex', gap:'8px'}},
+        React.createElement('button', {onClick:loadAll, disabled:loading}, '🔄 Actualizar'),
+        React.createElement('button', {onClick:handleLogout}, '🔒 Salir')
+      )
+    ),
+    React.createElement('div', {className:'app'},
+    // Sidebar
+    React.createElement('div', {className:'sidebar'},
+      React.createElement('div', {className:'brand'},
+        React.createElement(ToothIcon, {size:26, color:'#EAF4F2'}),
+        React.createElement('div', null,
+          React.createElement('div', {className:'brand-text'}, 'Consultorio'),
+          React.createElement('div', {className:'brand-sub'}, 'Sistema de gestión')
+        )
+      ),
+      React.createElement('div', {className:'nav'},
+        navItems.map(it => React.createElement('button', {
+          key:it.key,
+          className:'nav-item' + (nav===it.key?' active':'') + (!it.enabled?' disabled':''),
+          onClick: ()=> it.enabled && setNav(it.key),
+          disabled: !it.enabled
+        },
+          React.createElement('span',{className:'nav-dot'}),
+          it.label,
+          !it.enabled && React.createElement('span',{style:{marginLeft:'auto',fontSize:'10px',opacity:.7}}, 'pronto')
+        ))
+      ),
+      React.createElement('div', {className:'nav-footer'}, 'Módulo 4 de 6', React.createElement('br'), 'Derivaciones y comisiones')
+    ),
+
+    // Main
+    React.createElement('div', {className:'main'},
+
+      nav==='pacientes' && React.createElement(React.Fragment, null,
+        React.createElement('div', {className:'topline'},
+          React.createElement('div', null,
+            React.createElement('h1', {className:'h1'}, 'Pacientes'),
+            React.createElement('p', {className:'h1-sub'}, pacientes.length + ' fichas registradas · ID automático, sin duplicados')
+          ),
+          React.createElement('button', {className:'btn btn-primary', onClick:openNewPaciente}, ICONS.plus, 'Nuevo paciente')
+        ),
+
+        React.createElement('div', {className:'stats'},
+          React.createElement('div', {className:'stat-card total'},
+            React.createElement('div', {className:'stat-num'}, pacientes.length),
+            React.createElement('div', {className:'stat-label'}, 'Total de pacientes')
+          ),
+          React.createElement('div', {className:'stat-card'},
+            React.createElement('div', {className:'stat-num', style:{color:'var(--green)'}}, counts.activo),
+            React.createElement('div', {className:'stat-label'}, React.createElement('span',{className:'dot d-green'}), 'Activos')
+          ),
+          React.createElement('div', {className:'stat-card'},
+            React.createElement('div', {className:'stat-num', style:{color:'var(--yellow)'}}, counts.presupuesto),
+            React.createElement('div', {className:'stat-label'}, React.createElement('span',{className:'dot d-yellow'}), 'Presupuesto pendiente')
+          ),
+          React.createElement('div', {className:'stat-card'},
+            React.createElement('div', {className:'stat-num', style:{color:'var(--orange)'}}, counts.esperando),
+            React.createElement('div', {className:'stat-label'}, React.createElement('span',{className:'dot d-orange'}), 'Esperando turno')
+          ),
+          React.createElement('div', {className:'stat-card'},
+            React.createElement('div', {className:'stat-num', style:{color:'var(--red)'}}, counts.inactivo),
+            React.createElement('div', {className:'stat-label'}, React.createElement('span',{className:'dot d-red'}), 'Inactivos')
+          ),
+        ),
+
+        React.createElement('div', {className:'toolbar'},
+          React.createElement('div', {className:'search-wrap'},
+            React.createElement('span', {className:'search-icon'}, ICONS.search),
+            React.createElement('input', {
+              placeholder:'Buscar por nombre, apellido, DNI o ID...',
+              value:search, onChange:e=>setSearch(e.target.value)
+            })
+          ),
+          React.createElement('select', {className:'filter', value:filterEstado, onChange:e=>setFilterEstado(e.target.value)},
+            React.createElement('option',{value:'todos'}, 'Todos los estados'),
+            ESTADOS.map(e => React.createElement('option', {key:e.value, value:e.value}, e.label))
+          )
+        ),
+
+        React.createElement('div', {className:'table-wrap'},
+          loading ? React.createElement('div',{className:'empty-state'}, 'Cargando...') :
+          filtered.length===0 ? React.createElement('div', {className:'empty-state'},
+            React.createElement('div',{className:'tooth'}, React.createElement(ToothIcon,{size:34,color:'var(--muted)'})),
+            React.createElement('h3', null, pacientes.length===0 ? 'Todavía no hay pacientes' : 'Sin resultados'),
+            React.createElement('p', null, pacientes.length===0 ? 'Cargá la primera ficha para empezar.' : 'Probá con otra búsqueda o filtro.'),
+            pacientes.length===0 && React.createElement('button', {className:'btn btn-primary', onClick:openNewPaciente}, ICONS.plus, 'Nuevo paciente')
+          ) :
+          React.createElement('table', null,
+            React.createElement('thead', null,
+              React.createElement('tr', null,
+                ['ID','Paciente','DNI','Contacto','Obra social','Profesional','Estado',''].map(h=>
+                  React.createElement('th',{key:h}, h))
+              )
+            ),
+            React.createElement('tbody', null,
+              filtered.map(p => {
+                const info = estadoInfo(p.estado);
+                return React.createElement('tr', {key:p.id},
+                  React.createElement('td', null, React.createElement('span',{className:'pid'}, p.id)),
+                  React.createElement('td', null,
+                    React.createElement('div',{className:'pname'}, p.apellido + ', ' + p.nombre),
+                    React.createElement('div',{className:'psub'}, [p.sexo, calcAge(p.fechaNacimiento) && (calcAge(p.fechaNacimiento)+' años')].filter(Boolean).join(' · '))
+                  ),
+                  React.createElement('td', null, p.dni || '—'),
+                  React.createElement('td', null,
+                    React.createElement('div', null, p.celular || '—'),
+                    p.email && React.createElement('div',{className:'psub'}, p.email)
+                  ),
+                  React.createElement('td', null, p.obraSocial || '—'),
+                  React.createElement('td', null, p.profesionalPrincipal || '—'),
+                  React.createElement('td', null,
+                    React.createElement('span', {className:'badge b-'+info.color},
+                      React.createElement('span',{className:'dot d-'+info.color}), info.label)
+                  ),
+                  React.createElement('td', null,
+                    React.createElement('div',{className:'row-actions'},
+                      React.createElement('button',{className:'icon-btn', title:'Ficha clínica', onClick:()=>{ setNav('fichaClinica'); openFicha(p.id); }, style:{color:'var(--primary)'}},
+                        React.createElement('svg',{width:16,height:16,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2},
+                          React.createElement('path',{d:"M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"}),
+                          React.createElement('rect',{x:9,y:3,width:6,height:4,rx:1}),
+                          React.createElement('line',{x1:9,y1:12,x2:15,y2:12}),
+                          React.createElement('line',{x1:9,y1:16,x2:13,y2:16})
+                        )
+                      ),
+                      React.createElement('button',{className:'icon-btn', title:'Editar', onClick:()=>openEditPaciente(p)}, ICONS.edit),
+                      React.createElement('button',{className:'icon-btn', title:'Eliminar', onClick:()=>deletePaciente(p.id)}, ICONS.trash)
+                    )
+                  )
+                );
+              })
+            )
+          )
+        )
+      ),
+
+      nav==='profesionales' && React.createElement(React.Fragment, null,
+        React.createElement('div', {className:'topline'},
+          React.createElement('div', null,
+            React.createElement('h1', {className:'h1'}, 'Profesionales'),
+            React.createElement('p', {className:'h1-sub'}, 'Alimenta el desplegable de "profesional principal" en las fichas de pacientes')
+          ),
+          React.createElement('button', {className:'btn btn-primary', onClick:openNewProf}, ICONS.plus, 'Nuevo profesional')
+        ),
+        React.createElement('div', {className:'prof-list'},
+          profesionales.length===0 && React.createElement('div',{className:'table-wrap'},
+            React.createElement('div',{className:'empty-state'},
+              React.createElement('h3',null,'Sin profesionales cargados'),
+              React.createElement('p',null,'Agregá al menos uno para poder asignarlo a un paciente.')
+            )
+          ),
+          profesionales.map(pr => React.createElement('div', {className:'prof-row', key:pr.id},
+            React.createElement('div', {className:'prof-avatar'}, (pr.nombre||'?').trim()[0]?.toUpperCase() || '?'),
+            React.createElement('div', {style:{flex:1}},
+              React.createElement('div', {className:'prof-name'}, pr.nombre),
+              React.createElement('div', {className:'prof-spec'}, (pr.especialidad || 'Sin especialidad asignada') + ' · ' + (pr.porcentaje!=null?pr.porcentaje:50) + '% para el profesional')
+            ),
+            React.createElement('button', {className:'icon-btn', title:'Editar', onClick:()=>openEditProf(pr)}, ICONS.edit),
+            React.createElement('button', {className:'icon-btn', title:'Eliminar', onClick:()=>deleteProf(pr.id)}, ICONS.trash)
+          ))
+        )
+      ),
+
+      nav==='obrasSociales' && React.createElement(React.Fragment, null,
+        React.createElement('div', {className:'topline'},
+          React.createElement('div', null,
+            React.createElement('h1', {className:'h1'}, 'Obras sociales'),
+            React.createElement('p', {className:'h1-sub'}, 'Cargá el arancel de cada obra social una vez; el sistema autocompleta código → descripción → valor en cada prestación')
+          )
+        ),
+
+        React.createElement('form', {onSubmit:addObraSocial, style:{display:'flex', gap:'10px', marginBottom:'20px'}},
+          React.createElement('input', {
+            value:formOSName, onChange:e=>setFormOSName(e.target.value),
+            placeholder:'Nombre de la obra social (ej: Avalian, OSDE, Swiss Medical...)',
+            style:{flex:1, padding:'11px 14px', borderRadius:'10px', border:'1px solid var(--line)', fontFamily:'inherit', fontSize:'14px'}
+          }),
+          React.createElement('button', {type:'submit', className:'btn btn-primary'}, ICONS.plus, 'Agregar')
+        ),
+
+        obrasSociales.length===0 ? React.createElement('div', {className:'table-wrap'},
+          React.createElement('div', {className:'empty-state'},
+            React.createElement('h3', null, 'Sin obras sociales cargadas'),
+            React.createElement('p', null, 'Agregá la primera para empezar a cargar su planilla de aranceles.')
+          )
+        ) : React.createElement(React.Fragment, null,
+          React.createElement('div', {className:'os-grid', style:{marginBottom:'22px'}},
+            obrasSociales.map(os => React.createElement('div', {
+              key:os.id,
+              className:'os-card' + (selectedOS===os.id ? ' selected' : ''),
+              onClick:()=>setSelectedOS(os.id)
+            },
+              React.createElement('button', {className:'os-card-del', onClick:e=>{e.stopPropagation(); deleteObraSocial(os.id);}}, ICONS.trash),
+              React.createElement('div', {className:'os-card-name'}, os.nombre),
+              React.createElement('div', {className:'os-card-count'}, (nomencladores[os.id]||[]).length + ' códigos cargados'),
+              React.createElement('div', {onClick:e=>e.stopPropagation(), style:{marginTop:'8px', display:'flex', alignItems:'center', gap:'6px'}},
+                React.createElement('span', {style:{fontSize:'11.5px', color:'var(--muted)'}}, 'Desc. AOA'),
+                React.createElement('input', {
+                  type:'number', min:'0', max:'100', value: os.porcentajeAOA!=null?os.porcentajeAOA:9,
+                  onChange:e=>updatePctAOA(os.id, e.target.value),
+                  style:{width:'52px', padding:'4px 6px', borderRadius:'6px', border:'1px solid var(--line)', fontSize:'12px'}
+                }),
+                React.createElement('span', {style:{fontSize:'11.5px', color:'var(--muted)'}}, '%')
+              )
+            ))
+          ),
+
+          selectedOS && React.createElement(React.Fragment, null,
+            React.createElement('div', {
+              className:'import-box' + (isDragging ? ' dragging' : ''),
+              onDragOver:e=>{e.preventDefault(); setIsDragging(true);},
+              onDragLeave:()=>setIsDragging(false),
+              onDrop:handleDrop
+            },
+              React.createElement('strong', {style:{fontSize:'13.5px'}}, '📋 Arrastrá el archivo de la planilla, o pegá desde Excel'),
+              React.createElement('div', {className:'hint'}, 'Soltá acá el .txt/.csv con Código, Descripción y Valor (uno por línea) — o copialas desde tu Excel y pegalas en el cuadro. Si un código ya existe, se actualiza con el valor nuevo.'),
+              React.createElement('input', {type:'file', ref:fileInputRef, accept:'.txt,.csv,.tsv', style:{display:'none'}, onChange:handleFilePick}),
+              React.createElement('textarea', {
+                value:pasteText, onChange:e=>setPasteText(e.target.value),
+                placeholder:'0216\tComposite dos superficies\t18500\n0432\tExtracción pieza permanente\t12300'
+              }),
+              React.createElement('div', {style:{display:'flex', gap:'10px', marginTop:'10px'}},
+                React.createElement('button', {className:'btn btn-primary', onClick:importPaste}, 'Importar planilla'),
+                React.createElement('button', {type:'button', className:'btn btn-ghost', onClick:()=>fileInputRef.current && fileInputRef.current.click()}, '📁 Elegir archivo...')
+              )
+            ),
+
+            React.createElement('form', {onSubmit:addNomencladorRow, className:'grid3', style:{marginBottom:'14px', alignItems:'end'}},
+              React.createElement('div', {className:'field'},
+                React.createElement('label', null, 'Código'),
+                React.createElement('input', {value:newRow.codigo, onChange:e=>setNewRow({...newRow, codigo:e.target.value})})
+              ),
+              React.createElement('div', {className:'field'},
+                React.createElement('label', null, 'Descripción'),
+                React.createElement('input', {value:newRow.descripcion, onChange:e=>setNewRow({...newRow, descripcion:e.target.value})})
+              ),
+              React.createElement('div', {style:{display:'flex', gap:'8px'}},
+                React.createElement('div', {className:'field', style:{flex:1}},
+                  React.createElement('label', null, 'Valor'),
+                  React.createElement('input', {type:'number', value:newRow.valor, onChange:e=>setNewRow({...newRow, valor:e.target.value})})
+                ),
+                React.createElement('button', {type:'submit', className:'btn btn-ghost'}, 'Agregar')
+              )
+            ),
+
+            React.createElement('div', {className:'table-wrap'},
+              (nomencladores[selectedOS]||[]).length===0 ? React.createElement('div', {className:'empty-state'},
+                React.createElement('p', null, 'Todavía no cargaste códigos para ' + osNombre(selectedOS) + '.')
+              ) : React.createElement('table', null,
+                React.createElement('thead', null, React.createElement('tr', null,
+                  ['Código','Descripción','Valor',''].map(h=>React.createElement('th',{key:h},h))
+                )),
+                React.createElement('tbody', null,
+                  (nomencladores[selectedOS]||[]).map(row => React.createElement('tr', {key:row.codigo},
+                    React.createElement('td', null, React.createElement('span',{className:'code-chip'}, row.codigo)),
+                    React.createElement('td', null, row.descripcion),
+                    React.createElement('td', null, money(row.valor)),
+                    React.createElement('td', null,
+                      React.createElement('div',{className:'row-actions'},
+                        React.createElement('button',{className:'icon-btn', title:'Eliminar', onClick:()=>deleteNomencladorRow(row.codigo)}, ICONS.trash)
+                      )
+                    )
+                  ))
+                )
+              )
+            )
+          )
+        )
+      ),
+
+      nav==='prestaciones' && React.createElement(React.Fragment, null,
+        React.createElement('div', {className:'topline'},
+          React.createElement('div', null,
+            React.createElement('h1', {className:'h1'}, 'Prestaciones'),
+            React.createElement('p', {className:'h1-sub'}, 'Cada tratamiento se registra una sola vez y alimenta liquidaciones, estadísticas y facturación')
+          ),
+          pacientes.length===0
+            ? React.createElement('span', {className:'h1-sub'}, 'Cargá un paciente primero')
+            : React.createElement('button', {className:'btn btn-primary', onClick:openNewPrestacion}, ICONS.plus, 'Nueva prestación')
+        ),
+
+        React.createElement('div', {className:'stats stats-4'},
+          React.createElement('div', {className:'stat-card total'},
+            React.createElement('div', {className:'stat-num'}, money(prestTotals.facturado)),
+            React.createElement('div', {className:'stat-label'}, 'Total facturado')
+          ),
+          React.createElement('div', {className:'stat-card'},
+            React.createElement('div', {className:'stat-num', style:{color:'var(--green)'}}, money(prestTotals.cobrado)),
+            React.createElement('div', {className:'stat-label'}, React.createElement('span',{className:'dot d-green'}), 'Cobrado')
+          ),
+          React.createElement('div', {className:'stat-card'},
+            React.createElement('div', {className:'stat-num', style:{color:'var(--orange)'}}, money(prestTotals.pendiente)),
+            React.createElement('div', {className:'stat-label'}, React.createElement('span',{className:'dot d-orange'}), 'Pendiente de cobro')
+          ),
+          React.createElement('div', {className:'stat-card'},
+            React.createElement('div', {className:'stat-num'}, prestaciones.length),
+            React.createElement('div', {className:'stat-label'}, 'Prestaciones registradas')
+          ),
+        ),
+
+        React.createElement('div', {className:'toolbar'},
+          React.createElement('div', {style:{flex:1}}),
+          React.createElement('select', {className:'filter', value:filterCobro, onChange:e=>setFilterCobro(e.target.value)},
+            React.createElement('option',{value:'todos'}, 'Todos los cobros'),
+            ESTADOS_COBRO.map(e => React.createElement('option', {key:e.value, value:e.value}, e.label))
+          )
+        ),
+
+        React.createElement('div', {className:'table-wrap'},
+          filteredPrest.length===0 ? React.createElement('div', {className:'empty-state'},
+            React.createElement('div',{className:'tooth'}, React.createElement(ToothIcon,{size:34,color:'var(--muted)'})),
+            React.createElement('h3', null, 'Sin prestaciones registradas'),
+            React.createElement('p', null, pacientes.length===0 ? 'Primero cargá al menos un paciente.' : 'Registrá el primer tratamiento realizado.')
+          ) :
+          React.createElement('table', null,
+            React.createElement('thead', null,
+              React.createElement('tr', null,
+                ['Fecha','Paciente','Profesional','Prestación','Pieza','Obra social','Particular','Plus','Cobro',''].map(h=>
+                  React.createElement('th',{key:h}, h))
+              )
+            ),
+            React.createElement('tbody', null,
+              filteredPrest.map(p => {
+                const info = cobroInfo(p.estadoCobro);
+                return React.createElement('tr', {key:p.id},
+                  React.createElement('td', null, p.fecha || '—'),
+                  React.createElement('td', null, React.createElement('div',{className:'pname'}, pacienteLabel(p.pacienteId))),
+                  React.createElement('td', null, p.profesional || '—'),
+                  React.createElement('td', null,
+                    p.codigo && React.createElement('div', null, React.createElement('span',{className:'code-chip'}, p.codigo)),
+                    React.createElement('div', {style:p.codigo?{marginTop:'4px'}:{}}, p.prestacion)
+                  ),
+                  React.createElement('td', null, p.piezaDentaria ? React.createElement('span',{className:'pieza-cara-tag'}, p.piezaDentaria + (p.caras&&p.caras.length ? ' '+p.caras.join('') : '')) : '—'),
+                  React.createElement('td', null, money(p.obraSocial)),
+                  React.createElement('td', null, money(p.particular)),
+                  React.createElement('td', null, money(p.plus)),
+                  React.createElement('td', null,
+                    React.createElement('span', {className:'badge b-'+info.color},
+                      React.createElement('span',{className:'dot d-'+info.color}), info.label)
+                  ),
+                  React.createElement('td', null,
+                    React.createElement('div',{className:'row-actions'},
+                      React.createElement('button',{className:'icon-btn', title:'Editar', onClick:()=>openEditPrestacion(p)}, ICONS.edit),
+                      React.createElement('button',{className:'icon-btn', title:'Eliminar', onClick:()=>deletePrestacion(p.id)}, ICONS.trash)
+                    )
+                  )
+                );
+              })
+            )
+          )
+        )
+      ),
+
+      nav==='presupuestos' && React.createElement(React.Fragment, null,
+        React.createElement('div', {className:'topline'},
+          React.createElement('div', null,
+            React.createElement('h1', {className:'h1'}, 'Presupuestos'),
+            React.createElement('p', {className:'h1-sub'}, 'Al aceptarse, el presupuesto pasa a "En tratamiento" y queda vinculado al paciente')
+          ),
+          pacientes.length===0
+            ? React.createElement('span', {className:'h1-sub'}, 'Cargá un paciente primero')
+            : React.createElement('button', {className:'btn btn-primary', onClick:openNewPresupuesto}, ICONS.plus, 'Nuevo presupuesto')
+        ),
+
+        React.createElement('div', {className:'stats stats-4'},
+          React.createElement('div', {className:'stat-card total'},
+            React.createElement('div', {className:'stat-num'}, presuTotals.total),
+            React.createElement('div', {className:'stat-label'}, 'Presupuestos totales')
+          ),
+          React.createElement('div', {className:'stat-card'},
+            React.createElement('div', {className:'stat-num', style:{color:'var(--yellow)'}}, presuTotals.pendientes),
+            React.createElement('div', {className:'stat-label'}, React.createElement('span',{className:'dot d-yellow'}), 'Pendientes')
+          ),
+          React.createElement('div', {className:'stat-card'},
+            React.createElement('div', {className:'stat-num', style:{color:'var(--green)'}}, presuTotals.enTratamiento),
+            React.createElement('div', {className:'stat-label'}, React.createElement('span',{className:'dot d-green'}), 'En tratamiento')
+          ),
+          React.createElement('div', {className:'stat-card'},
+            React.createElement('div', {className:'stat-num'}, money(presuTotals.montoAceptado)),
+            React.createElement('div', {className:'stat-label'}, 'Monto aceptado')
+          ),
+        ),
+
+        React.createElement('div', {className:'toolbar'},
+          React.createElement('div', {style:{flex:1}}),
+          React.createElement('select', {className:'filter', value:filterPresu, onChange:e=>setFilterPresu(e.target.value)},
+            React.createElement('option',{value:'todos'}, 'Todos los estados'),
+            ESTADOS_PRESUPUESTO.map(e => React.createElement('option', {key:e.value, value:e.value}, e.label))
+          )
+        ),
+
+        React.createElement('div', {className:'table-wrap'},
+          filteredPresu.length===0 ? React.createElement('div', {className:'empty-state'},
+            React.createElement('div',{className:'tooth'}, React.createElement(ToothIcon,{size:34,color:'var(--muted)'})),
+            React.createElement('h3', null, 'Sin presupuestos registrados'),
+            React.createElement('p', null, pacientes.length===0 ? 'Primero cargá al menos un paciente.' : 'Creá el primer presupuesto.')
+          ) :
+          React.createElement('table', null,
+            React.createElement('thead', null,
+              React.createElement('tr', null,
+                ['N°','Paciente','Profesional','Tratamientos','Monto total','Forma de pago','Cuotas','Estado',''].map(h=>
+                  React.createElement('th',{key:h}, h))
+              )
+            ),
+            React.createElement('tbody', null,
+              filteredPresu.map(p => {
+                const info = presuInfo(p.estado);
+                return React.createElement('tr', {key:p.id},
+                  React.createElement('td', null, React.createElement('span',{className:'pid'}, p.id)),
+                  React.createElement('td', null, React.createElement('div',{className:'pname'}, pacienteLabel(p.pacienteId))),
+                  React.createElement('td', null, p.profesional || '—'),
+                  React.createElement('td', null, React.createElement('div',{className:'psub', style:{maxWidth:'220px'}}, p.tratamientos || '—')),
+                  React.createElement('td', null, money(p.montoTotal)),
+                  React.createElement('td', null, p.formaPago),
+                  React.createElement('td', null, p.cuotas),
+                  React.createElement('td', null,
+                    React.createElement('span', {className:'badge b-'+info.color},
+                      React.createElement('span',{className:'dot d-'+info.color}), info.label)
+                  ),
+                  React.createElement('td', null,
+                    React.createElement('div',{className:'row-actions'},
+                      React.createElement('button',{className:'icon-btn', title:'Editar', onClick:()=>openEditPresupuesto(p)}, ICONS.edit),
+                      React.createElement('button',{className:'icon-btn', title:'Eliminar', onClick:()=>deletePresupuesto(p.id)}, ICONS.trash)
+                    )
+                  )
+                );
+              })
+            )
+          )
+        )
+      ),
+
+      nav==='liquidaciones' && React.createElement(React.Fragment, null,
+        React.createElement('div', {className:'topline'},
+          React.createElement('div', null,
+            React.createElement('h1', {className:'h1'}, 'Liquidaciones'),
+            React.createElement('p', {className:'h1-sub'}, 'Elegí profesional y período: los montos se calculan solos a partir de las prestaciones ya cobradas')
+          )
+        ),
+
+        React.createElement('div', {className:'liqui-panel'},
+          React.createElement('div', {className:'liqui-form'},
+            React.createElement('div', {className:'section-label', style:{marginTop:0}}, 'Período a liquidar'),
+            React.createElement('div', {className:'grid3'},
+              React.createElement('div', {className:'field'},
+                React.createElement('label', null, 'Profesional'),
+                React.createElement('select', {value:liquiProf, onChange:e=>setLiquiProf(e.target.value)},
+                  React.createElement('option', {value:''}, 'Seleccionar...'),
+                  profesionales.map(pr => React.createElement('option', {key:pr.id, value:pr.nombre}, pr.nombre))
+                )
+              ),
+              React.createElement('div', {className:'field'},
+                React.createElement('label', null, 'Desde'),
+                React.createElement('input', {type:'date', value:liquiDesde, onChange:e=>setLiquiDesde(e.target.value)})
+              ),
+              React.createElement('div', {className:'field'},
+                React.createElement('label', null, 'Hasta'),
+                React.createElement('input', {type:'date', value:liquiHasta, onChange:e=>setLiquiHasta(e.target.value)})
+              ),
+            ),
+
+            !liquiProf ? React.createElement('p', {className:'h1-sub', style:{marginTop:'18px'}}, 'Elegí un profesional para ver sus prestaciones cobradas del período.') :
+            React.createElement(React.Fragment, null,
+              React.createElement('div', {className:'section-label'}, 'Prestaciones cobradas incluidas (' + liquiPrestaciones.length + ')'),
+              liquiPrestaciones.length===0 ? React.createElement('p', {className:'h1-sub'}, 'No hay prestaciones con cobro "Cobrado" para ' + liquiProf + ' en ese período.') :
+              React.createElement('div', {className:'table-wrap', style:{marginBottom:'20px'}},
+                React.createElement('table', null,
+                  React.createElement('thead', null, React.createElement('tr', null,
+                    ['Fecha','Paciente','Prestación','Obra social','Particular','Plus'].map(h=>React.createElement('th',{key:h},h))
+                  )),
+                  React.createElement('tbody', null,
+                    liquiPrestaciones.map(p => React.createElement('tr', {key:p.id},
+                      React.createElement('td', null, p.fecha),
+                      React.createElement('td', null, pacienteLabel(p.pacienteId)),
+                      React.createElement('td', null, p.prestacion),
+                      React.createElement('td', null, money(p.obraSocial)),
+                      React.createElement('td', null, money(p.particular)),
+                      React.createElement('td', null, money(p.plus))
+                    ))
+                  )
+                )
+              ),
+
+              React.createElement('div', {className:'section-label'}, 'Ajustes manuales'),
+              React.createElement('div', {className:'grid3'},
+                React.createElement('div', {className:'field'},
+                  React.createElement('label', null, 'Valor de la estampilla'),
+                  React.createElement('input', {type:'number', min:'0', value:valorEstampilla, onChange:e=>updateValorEstampilla(e.target.value)}),
+                  React.createElement('div', {className:'hint'}, 'Se cobra 1 vez por mes, por paciente y por obra social — no por prestación.')
+                ),
+                React.createElement('div', {className:'field'},
+                  React.createElement('label', null, 'Materiales compartidos (se resta)'),
+                  React.createElement('input', {type:'number', min:'0', value:liquiMateriales, onChange:e=>setLiquiMateriales(e.target.value)})
+                ),
+                React.createElement('div', {className:'field'},
+                  React.createElement('label', null, 'Comisiones por derivación (se suma)'),
+                  React.createElement('input', {type:'number', min:'0', value:liquiComisiones, onChange:e=>setLiquiComisiones(e.target.value)}),
+                  liquiComisionesAuto>0
+                    ? React.createElement('div', {className:'hint'},
+                        liquiDerivacionesPagadas.length + ' derivación(es) pagada(s) suman ' + money(liquiComisionesAuto) + '. ',
+                        React.createElement('button', {type:'button', onClick:()=>setLiquiComisiones(liquiComisionesAuto), style:{color:'var(--accent)', background:'none', border:'none', cursor:'pointer', fontWeight:700, fontSize:'12px', padding:0}}, 'Usar este monto')
+                      )
+                    : React.createElement('div', {className:'hint'}, 'Sin derivaciones pagadas de ' + (liquiProf||'este profesional') + ' en el período.')
+                )
+              ),
+              React.createElement('button', {className:'btn btn-primary', style:{marginTop:'18px'}, onClick:generarLiquidacion}, 'Generar y guardar liquidación')
+            )
+          ),
+
+          liquiProf && React.createElement('div', {className:'liqui-receipt'},
+            React.createElement('div', {className:'liqui-receipt-name'}, liquiProf),
+            React.createElement('div', {className:'liqui-receipt-period'}, (liquiDesde||'…') + '  →  ' + (liquiHasta||'…')),
+            React.createElement('div', {className:'liqui-row'}, React.createElement('span',{className:'liqui-row-label'},'Obras sociales'), React.createElement('span',null,money(liquiSums.obraSocialBruto))),
+            React.createElement('div', {className:'liqui-row'}, React.createElement('span',{className:'liqui-row-label'},'Particulares / copago'), React.createElement('span',null,money(liquiSums.particular))),
+            React.createElement('div', {className:'liqui-row'}, React.createElement('span',{className:'liqui-row-label'},'Plus'), React.createElement('span',null,money(liquiSums.plus))),
+            React.createElement('div', {className:'liqui-row'}, React.createElement('span',{className:'liqui-row-label'},'Total facturado'), React.createElement('span',null,money(liquiSums.totalBruto))),
+            liquiSums.aoaDescuento>0 && React.createElement('div', {className:'liqui-row neg'}, React.createElement('span',{className:'liqui-row-label'},'Descuento AOA'), React.createElement('span',null,'−'+money(liquiSums.aoaDescuento))),
+            React.createElement('div', {className:'liqui-row'}, React.createElement('span',{className:'liqui-row-label'}, React.createElement('strong',null,'Total neto cobrado')), React.createElement('span',null, React.createElement('strong',null,money(liquiSums.totalNeto)))),
+            React.createElement('div', {className:'liqui-row'}, React.createElement('span',{className:'liqui-row-label'}, liquiPct+'% '+liquiProf), React.createElement('span',null,money(liquiMitad))),
+            React.createElement('div', {className:'liqui-row'}, React.createElement('span',{className:'liqui-row-label'}, (100-liquiPct)+'% Consultorio'), React.createElement('span',null,money(liquiSums.totalNeto-liquiMitad))),
+            liquiSums.cantEstampillas>0 && React.createElement('div', {className:'liqui-row neg'}, React.createElement('span',{className:'liqui-row-label'},'Estampillas ('+liquiSums.cantEstampillas+' × '+money(valorEstampilla)+')'), React.createElement('span',null,'−'+money(liquiEstampillasTotal))),
+            Number(liquiMateriales)>0 && React.createElement('div', {className:'liqui-row neg'}, React.createElement('span',{className:'liqui-row-label'},'Materiales compartidos'), React.createElement('span',null,'−'+money(liquiMateriales))),
+            Number(liquiComisiones)>0 && React.createElement('div', {className:'liqui-row pos'}, React.createElement('span',{className:'liqui-row-label'},'Comisiones'), React.createElement('span',null,'+'+money(liquiComisiones))),
+            React.createElement('div', {className:'liqui-total'},
+              React.createElement('span', {className:'liqui-total-label'}, 'Saldo final'),
+              React.createElement('span', {className:'liqui-total-num'}, money(liquiSaldoFinal))
+            )
+          )
+        ),
+
+        liquidaciones.length>0 && React.createElement(React.Fragment, null,
+          React.createElement('div', {className:'section-label'}, 'Historial de liquidaciones'),
+          React.createElement('div', {className:'table-wrap'},
+            React.createElement('table', null,
+              React.createElement('thead', null, React.createElement('tr', null,
+                ['N°','Profesional','Período','Total neto','Saldo final','Generada',''].map(h=>React.createElement('th',{key:h},h))
+              )),
+              React.createElement('tbody', null,
+                liquidaciones.map(l => React.createElement('tr', {key:l.id, className:'liqui-history-row'},
+                  React.createElement('td', null, React.createElement('span',{className:'pid'}, l.id)),
+                  React.createElement('td', null, React.createElement('div',{className:'pname'}, l.profesional)),
+                  React.createElement('td', null, l.desde + ' → ' + l.hasta),
+                  React.createElement('td', null, money(l.totalNeto)),
+                  React.createElement('td', null, React.createElement('strong', null, money(l.saldoFinal))),
+                  React.createElement('td', null, l.generadaEl),
+                  React.createElement('td', null,
+                    React.createElement('div',{className:'row-actions'},
+                      React.createElement('button',{className:'icon-btn', title:'Eliminar', onClick:()=>deleteLiquidacion(l.id)}, ICONS.trash)
+                    )
+                  )
+                ))
+              )
+            )
+          )
+        )
+      ),
+
+      nav==='derivaciones' && React.createElement(React.Fragment, null,
+        React.createElement('div', {className:'topline'},
+          React.createElement('div', null,
+            React.createElement('h1', {className:'h1'}, 'Derivaciones'),
+            React.createElement('p', {className:'h1-sub'}, 'Cada derivación queda vinculada al paciente y alimenta las comisiones de la Liquidación')
+          ),
+          pacientes.length===0
+            ? React.createElement('span', {className:'h1-sub'}, 'Cargá un paciente primero')
+            : React.createElement('button', {className:'btn btn-primary', onClick:openNewDerivacion}, ICONS.plus, 'Nueva derivación')
+        ),
+
+        React.createElement('div', {className:'stats stats-4'},
+          React.createElement('div', {className:'stat-card total'},
+            React.createElement('div', {className:'stat-num'}, derivaciones.length),
+            React.createElement('div', {className:'stat-label'}, 'Derivaciones totales')
+          ),
+          React.createElement('div', {className:'stat-card'},
+            React.createElement('div', {className:'stat-num', style:{color:'var(--orange)'}}, money(derivTotals.pendiente)),
+            React.createElement('div', {className:'stat-label'}, React.createElement('span',{className:'dot d-orange'}), 'Comisiones pendientes')
+          ),
+          React.createElement('div', {className:'stat-card'},
+            React.createElement('div', {className:'stat-num', style:{color:'var(--green)'}}, money(derivTotals.pagada)),
+            React.createElement('div', {className:'stat-label'}, React.createElement('span',{className:'dot d-green'}), 'Comisiones pagadas')
+          ),
+          React.createElement('div', {className:'stat-card'},
+            React.createElement('div', {className:'stat-num'}, '5%'),
+            React.createElement('div', {className:'stat-label'}, 'Comisión sugerida por defecto')
+          ),
+        ),
+
+        React.createElement('div', {className:'toolbar'},
+          React.createElement('div', {style:{flex:1}}),
+          React.createElement('select', {className:'filter', value:filterComision, onChange:e=>setFilterComision(e.target.value)},
+            React.createElement('option',{value:'todos'}, 'Todas'),
+            ESTADOS_COMISION.map(e => React.createElement('option', {key:e.value, value:e.value}, e.label))
+          )
+        ),
+
+        React.createElement('div', {className:'table-wrap'},
+          filteredDeriv.length===0 ? React.createElement('div', {className:'empty-state'},
+            React.createElement('div',{className:'tooth'}, React.createElement(ToothIcon,{size:34,color:'var(--muted)'})),
+            React.createElement('h3', null, 'Sin derivaciones registradas'),
+            React.createElement('p', null, pacientes.length===0 ? 'Primero cargá al menos un paciente.' : 'Registrá la primera derivación.')
+          ) :
+          React.createElement('table', null,
+            React.createElement('thead', null,
+              React.createElement('tr', null,
+                ['Fecha','Paciente','Deriva','Recibe','Motivo','Presupuesto','% Com.','Comisión','Estado',''].map(h=>
+                  React.createElement('th',{key:h}, h))
+              )
+            ),
+            React.createElement('tbody', null,
+              filteredDeriv.map(d => {
+                const info = comisionInfo(d.comisionPagada);
+                return React.createElement('tr', {key:d.id},
+                  React.createElement('td', null, d.fecha || '—'),
+                  React.createElement('td', null, React.createElement('div',{className:'pname'}, pacienteLabel(d.pacienteId))),
+                  React.createElement('td', null, d.quienDeriva),
+                  React.createElement('td', null, d.quienRecibe),
+                  React.createElement('td', null, React.createElement('div',{className:'psub', style:{maxWidth:'180px'}}, d.motivo || '—')),
+                  React.createElement('td', null, presupuestoLabel(d.presupuestoId)),
+                  React.createElement('td', null, (d.porcentaje||0) + '%'),
+                  React.createElement('td', null, React.createElement('strong',null, money(comisionMontoDe(d)))),
+                  React.createElement('td', null,
+                    React.createElement('span', {className:'badge b-'+info.color},
+                      React.createElement('span',{className:'dot d-'+info.color}), info.label)
+                  ),
+                  React.createElement('td', null,
+                    React.createElement('div',{className:'row-actions'},
+                      React.createElement('button',{className:'icon-btn', title:'Editar', onClick:()=>openEditDerivacion(d)}, ICONS.edit),
+                      React.createElement('button',{className:'icon-btn', title:'Eliminar', onClick:()=>deleteDerivacion(d.id)}, ICONS.trash)
+                    )
+                  )
+                );
+              })
+            )
+          )
+        )
+      ),
+
+      nav==='fichaClinica' && React.createElement(React.Fragment, null,
+        React.createElement('div', {className:'topline'},
+          React.createElement('div', null,
+            React.createElement('h1', {className:'h1'}, 'Ficha clínica'),
+            React.createElement('p', {className:'h1-sub'}, fichaActualPacId ? 'Paciente: ' + pacienteLabel(fichaActualPacId) : 'Seleccioná un paciente desde la lista de Pacientes')
+          ),
+          fichaActualPacId && React.createElement('div', {style:{display:'flex', gap:'10px'}},
+            React.createElement('button', {className:'btn btn-ghost', onClick:()=>setShowConsentimiento(true)}, '✍️ Consentimiento'),
+            React.createElement('button', {className:'btn btn-primary', onClick:()=>openNuevaAtencion(fichaActualPacId)}, ICONS.plus, 'Nueva atención')
+          )
+        ),
+
+        !fichaActualPacId ? React.createElement('div', {className:'table-wrap'},
+          React.createElement('div', {className:'empty-state'},
+            React.createElement('h3', null, 'Entrá desde la lista de Pacientes'),
+            React.createElement('p', null, 'Tocá el ícono de ficha clínica (portapapeles) en la fila del paciente que querés ver.')
+          )
+        ) : React.createElement(React.Fragment, null,
+
+          // Firma guardada
+          getFicha(fichaActualPacId).firma && React.createElement('div', {style:{marginBottom:'16px', background:'var(--green-tint)', border:'1px solid var(--green)', borderRadius:'12px', padding:'12px 16px', display:'flex', alignItems:'center', gap:'10px'}},
+            React.createElement('span', {style:{color:'var(--green)', fontWeight:700, fontSize:'13.5px'}}, '✅ Consentimiento informado firmado'),
+            React.createElement('span', {style:{color:'var(--green)', fontSize:'12px'}}, getFicha(fichaActualPacId).fechaFirma)
+          ),
+
+          React.createElement('div', {className:'ficha-grid'},
+            // Atenciones
+            React.createElement('div', {className:'ficha-card', style:{gridColumn:'1/-1'}},
+              React.createElement('h3', null, '📋 Historial de atenciones'),
+              (getFicha(fichaActualPacId).atenciones||[]).length===0
+                ? React.createElement('p', {className:'h1-sub'}, 'Sin atenciones registradas. Tocá "+ Nueva atención" para empezar.')
+                : (getFicha(fichaActualPacId).atenciones||[]).map(a =>
+                  React.createElement('div', {className:'atencion-row', key:a.id},
+                    React.createElement('div', {className:'atencion-head'},
+                      React.createElement('div', null,
+                        React.createElement('div', {className:'atencion-desc'}, a.descripcion),
+                        React.createElement('div', {className:'atencion-meta'}, [a.fecha, a.profesional, a.piezaDentaria && ('Pieza '+a.piezaDentaria+(a.caras?.length?' '+a.caras.join(''):''))].filter(Boolean).join(' · '))
+                      ),
+                      React.createElement('div', {style:{display:'flex', gap:'6px', alignItems:'center'}},
+                        a.facturada
+                          ? React.createElement('span', {style:{fontSize:'11.5px', color:'var(--green)', fontWeight:700}}, '✓ Facturada')
+                          : React.createElement('button', {className:'atencion-facturar', onClick:()=>facturarAtencion(fichaActualPacId, a)}, '+ Facturar'),
+                        React.createElement('button', {className:'icon-btn', onClick:()=>{ setEditingAtencion(a.id); setFormAtencion({...a}); setShowAtencionForm(true); }}, ICONS.edit),
+                        React.createElement('button', {className:'icon-btn', onClick:()=>deleteAtencion(fichaActualPacId, a.id)}, ICONS.trash)
+                      )
+                    )
+                  )
+                )
+            ),
+
+            // Odontograma
+            React.createElement('div', {className:'ficha-card'},
+              React.createElement('h3', null, '🦷 Odontograma'),
+              React.createElement('div', {className:'odontograma'},
+                CUADRANTES.map(q => React.createElement('div', {key:q.label},
+                  React.createElement('div', {className:'odonto-quad'}, q.label),
+                  React.createElement('div', {className:'odonto-row'},
+                    q.nums.map(n => {
+                      const od = getFicha(fichaActualPacId).odontograma||{};
+                      const tiene = !!(od[n]);
+                      return React.createElement('div', {
+                        key:n, className:'odonto-diente'+(tiene?' tiene-trabajo':''),
+                        title: tiene ? od[n] : 'Pieza '+n,
+                        onClick:()=>{
+                          const actual = od[n];
+                          const nuevo = actual ? null : prompt('¿Qué trabajo tiene la pieza '+n+'? (o dejá vacío para marcar como tratada)') || '✓';
+                          if(nuevo===null && !actual) return;
+                          saveOdontograma(fichaActualPacId, n, nuevo);
+                        }
+                      },
+                        n,
+                        tiene && React.createElement('div', {className:'trabajo-dot'})
+                      );
+                    })
+                  )
+                ))
+              )
+            ),
+
+            // Observaciones
+            React.createElement('div', {className:'ficha-card'},
+              React.createElement('h3', null, '📝 Observaciones clínicas'),
+              React.createElement('textarea', {
+                value: getFicha(fichaActualPacId).observaciones||'',
+                onChange: e=>saveObservaciones(fichaActualPacId, e.target.value),
+                placeholder:'Alergias, medicación habitual, antecedentes, notas clínicas...',
+                style:{width:'100%', minHeight:'160px', border:'1px solid var(--line)', borderRadius:'9px', padding:'10px 12px', fontFamily:'inherit', fontSize:'13.5px', resize:'vertical'}
+              })
+            )
+          )
+        )
+      ),
+
+      !['pacientes','profesionales','obrasSociales','prestaciones','presupuestos','liquidaciones','derivaciones','fichaClinica'].includes(nav) && React.createElement('div', {className:'coming-soon'},
+        React.createElement(ToothIcon, {size:40, color:'var(--line)'}),
+        React.createElement('h3', null, 'Próximo módulo'),
+        React.createElement('p', null, 'Este apartado se activa en la siguiente versión del sistema.')
+      )
+    ),
+
+    // Modal Paciente
+    showPForm && React.createElement('div', {className:'overlay', onClick:e=>{ if(e.target.className==='overlay') setShowPForm(false); }},
+      React.createElement('div', {className:'modal'},
+        React.createElement('div', {className:'modal-head'},
+          React.createElement('h2', null, editingP ? 'Editar paciente' : 'Nuevo paciente'),
+          React.createElement('button', {className:'modal-close', onClick:()=>setShowPForm(false)}, ICONS.close)
+        ),
+        React.createElement('form', {onSubmit:submitPaciente},
+          React.createElement('div', {className:'modal-body'},
+
+            React.createElement('div', {className:'section-label'}, 'Datos personales'),
+            React.createElement('div', {className:'grid3'},
+              React.createElement('div', {className:'field readonly'},
+                React.createElement('label', null, 'ID'),
+                React.createElement('input', {value:formP.id, disabled:true})
+              ),
+              React.createElement('div', {className:'field'},
+                React.createElement('label', null, 'Apellido *'),
+                React.createElement('input', {value:formP.apellido, onChange:e=>setFormP({...formP, apellido:e.target.value}), required:true})
+              ),
+              React.createElement('div', {className:'field'},
+                React.createElement('label', null, 'Nombre *'),
+                React.createElement('input', {value:formP.nombre, onChange:e=>setFormP({...formP, nombre:e.target.value}), required:true})
+              ),
+              React.createElement('div', {className:'field'},
+                React.createElement('label', null, 'DNI'),
+                React.createElement('input', {value:formP.dni, onChange:e=>setFormP({...formP, dni:e.target.value})})
+              ),
+              React.createElement('div', {className:'field'},
+                React.createElement('label', null, 'Fecha de nacimiento'),
+                React.createElement('input', {type:'date', value:formP.fechaNacimiento, onChange:e=>setFormP({...formP, fechaNacimiento:e.target.value})})
+              ),
+              React.createElement('div', {className:'field readonly'},
+                React.createElement('label', null, 'Edad'),
+                React.createElement('input', {value: calcAge(formP.fechaNacimiento) || '—', disabled:true})
+              ),
+              React.createElement('div', {className:'field'},
+                React.createElement('label', null, 'Sexo'),
+                React.createElement('select', {value:formP.sexo, onChange:e=>setFormP({...formP, sexo:e.target.value})},
+                  React.createElement('option', {value:''}, 'Seleccionar...'),
+                  React.createElement('option', {value:'Femenino'}, 'Femenino'),
+                  React.createElement('option', {value:'Masculino'}, 'Masculino'),
+                  React.createElement('option', {value:'Otro'}, 'Otro')
+                )
+              ),
+              React.createElement('div', {className:'field'},
+                React.createElement('label', null, 'Celular'),
+                React.createElement('input', {value:formP.celular, onChange:e=>setFormP({...formP, celular:e.target.value})})
+              ),
+              React.createElement('div', {className:'field'},
+                React.createElement('label', null, 'WhatsApp'),
+                React.createElement('input', {value:formP.whatsapp, onChange:e=>setFormP({...formP, whatsapp:e.target.value})})
+              ),
+              React.createElement('div', {className:'field'},
+                React.createElement('label', null, 'Email'),
+                React.createElement('input', {type:'email', value:formP.email, onChange:e=>setFormP({...formP, email:e.target.value})})
+              ),
+              React.createElement('div', {className:'field'},
+                React.createElement('label', null, 'Dirección'),
+                React.createElement('input', {value:formP.direccion, onChange:e=>setFormP({...formP, direccion:e.target.value})})
+              ),
+              React.createElement('div', {className:'field'},
+                React.createElement('label', null, 'Localidad'),
+                React.createElement('input', {value:formP.localidad, onChange:e=>setFormP({...formP, localidad:e.target.value})})
+              ),
+              React.createElement('div', {className:'field'},
+                React.createElement('label', null, 'Ocupación'),
+                React.createElement('input', {value:formP.ocupacion, onChange:e=>setFormP({...formP, ocupacion:e.target.value})})
+              ),
+            ),
+
+            React.createElement('div', {className:'section-label'}, 'Información odontológica'),
+            React.createElement('div', {className:'grid3'},
+              React.createElement('div', {className:'field'},
+                React.createElement('label', null, 'Obra social'),
+                React.createElement('input', {value:formP.obraSocial, onChange:e=>setFormP({...formP, obraSocial:e.target.value}), placeholder:'Particular / OSDE / ...'})
+              ),
+              React.createElement('div', {className:'field'},
+                React.createElement('label', null, 'N° de afiliado'),
+                React.createElement('input', {value:formP.numeroAfiliado, onChange:e=>setFormP({...formP, numeroAfiliado:e.target.value})})
+              ),
+              React.createElement('div', {className:'field'},
+                React.createElement('label', null, 'Profesional principal'),
+                React.createElement('select', {value:formP.profesionalPrincipal, onChange:e=>{
+                  const nombre = e.target.value;
+                  const prof = profesionales.find(pr=>pr.nombre===nombre);
+                  setFormP({...formP, profesionalPrincipal:nombre, especialidad: prof ? prof.especialidad : formP.especialidad});
+                }},
+                  React.createElement('option', {value:''}, 'Seleccionar...'),
+                  profesionales.map(pr => React.createElement('option', {key:pr.id, value:pr.nombre}, pr.nombre))
+                )
+              ),
+              React.createElement('div', {className:'field'},
+                React.createElement('label', null, 'Especialidad'),
+                React.createElement('input', {value:formP.especialidad, onChange:e=>setFormP({...formP, especialidad:e.target.value})})
+              ),
+              React.createElement('div', {className:'field'},
+                React.createElement('label', null, 'Derivado por'),
+                React.createElement('input', {value:formP.derivadoPor, onChange:e=>setFormP({...formP, derivadoPor:e.target.value})})
+              ),
+              React.createElement('div', {className:'field'},
+                React.createElement('label', null, 'Estado del tratamiento'),
+                React.createElement('input', {value:formP.estadoTratamiento, onChange:e=>setFormP({...formP, estadoTratamiento:e.target.value}), placeholder:'Ej: en curso, finalizado...'})
+              ),
+            ),
+
+            React.createElement('div', {className:'section-label'}, 'Estado del paciente'),
+            React.createElement('div', {className:'status-picker'},
+              ESTADOS.map(e => React.createElement('div', {
+                key:e.value,
+                className:'status-opt' + (formP.estado===e.value ? ' selected s-'+e.color : ''),
+                onClick:()=>setFormP({...formP, estado:e.value})
+              },
+                React.createElement('span',{className:'dot d-'+e.color}), e.label
+              ))
+            )
+          ),
+          React.createElement('div', {className:'modal-foot'},
+            React.createElement('button', {type:'button', className:'btn btn-ghost', onClick:()=>setShowPForm(false)}, 'Cancelar'),
+            React.createElement('button', {type:'submit', className:'btn btn-primary'}, editingP ? 'Guardar cambios' : 'Crear paciente')
+          )
+        )
+      )
+    ),
+
+    // Modal Profesional
+    showProfForm && React.createElement('div', {className:'overlay', onClick:e=>{ if(e.target.className==='overlay') setShowProfForm(false); }},
+      React.createElement('div', {className:'modal', style:{maxWidth:'440px'}},
+        React.createElement('div', {className:'modal-head'},
+          React.createElement('h2', null, formProf.id ? 'Editar profesional' : 'Nuevo profesional'),
+          React.createElement('button', {className:'modal-close', onClick:()=>setShowProfForm(false)}, ICONS.close)
+        ),
+        React.createElement('form', {onSubmit:submitProf},
+          React.createElement('div', {className:'modal-body'},
+            React.createElement('div', {className:'field', style:{marginBottom:'14px'}},
+              React.createElement('label', null, 'Nombre completo *'),
+              React.createElement('input', {value:formProf.nombre, onChange:e=>setFormProf({...formProf, nombre:e.target.value}), required:true, autoFocus:true})
+            ),
+            React.createElement('div', {className:'field', style:{marginBottom:'14px'}},
+              React.createElement('label', null, 'Especialidad'),
+              React.createElement('input', {value:formProf.especialidad, onChange:e=>setFormProf({...formProf, especialidad:e.target.value}), placeholder:'Ej: Ortodoncia, Endodoncia...'})
+            ),
+            React.createElement('div', {className:'field'},
+              React.createElement('label', null, '% que le corresponde al profesional'),
+              React.createElement('input', {type:'number', min:'0', max:'100', value:formProf.porcentaje, onChange:e=>setFormProf({...formProf, porcentaje:e.target.value})}),
+              React.createElement('div', {className:'hint'}, 'El resto queda para el consultorio. Se usa para calcular las liquidaciones.')
+            )
+          ),
+          React.createElement('div', {className:'modal-foot'},
+            React.createElement('button', {type:'button', className:'btn btn-ghost', onClick:()=>setShowProfForm(false)}, 'Cancelar'),
+            React.createElement('button', {type:'submit', className:'btn btn-primary'}, 'Guardar')
+          )
+        )
+      )
+    ),
+
+    // Modal Prestación
+    showPrestForm && React.createElement('div', {className:'overlay', onClick:e=>{ if(e.target.className==='overlay') setShowPrestForm(false); }},
+      React.createElement('div', {className:'modal', style:{maxWidth:'560px'}},
+        React.createElement('div', {className:'modal-head'},
+          React.createElement('h2', null, editingPrest ? 'Editar prestación' : 'Nueva prestación'),
+          React.createElement('button', {className:'modal-close', onClick:()=>setShowPrestForm(false)}, ICONS.close)
+        ),
+        React.createElement('form', {onSubmit:submitPrestacion},
+          React.createElement('div', {className:'modal-body'},
+            React.createElement('div', {className:'grid2'},
+              React.createElement('div', {className:'field readonly'},
+                React.createElement('label', null, 'N°'),
+                React.createElement('input', {value:formPrest.id, disabled:true})
+              ),
+              React.createElement('div', {className:'field'},
+                React.createElement('label', null, 'Fecha'),
+                React.createElement('input', {type:'date', value:formPrest.fecha, onChange:e=>setFormPrest({...formPrest, fecha:e.target.value})})
+              ),
+              React.createElement('div', {className:'field'},
+                React.createElement('label', null, 'Paciente *'),
+                React.createElement('select', {value:formPrest.pacienteId, onChange:e=>setFormPrest({...formPrest, pacienteId:e.target.value}), required:true},
+                  React.createElement('option', {value:''}, 'Seleccionar...'),
+                  pacientes.map(p => React.createElement('option', {key:p.id, value:p.id}, p.apellido + ', ' + p.nombre + ' (' + p.id + ')'))
+                )
+              ),
+              React.createElement('div', {className:'field'},
+                React.createElement('label', null, 'Profesional'),
+                React.createElement('select', {value:formPrest.profesional, onChange:e=>setFormPrest({...formPrest, profesional:e.target.value})},
+                  React.createElement('option', {value:''}, 'Seleccionar...'),
+                  profesionales.map(pr => React.createElement('option', {key:pr.id, value:pr.nombre}, pr.nombre))
+                )
+              ),
+            ),
+            React.createElement('div', {className:'field', style:{marginTop:'14px'}},
+              React.createElement('label', null, 'Descripción de la prestación *'),
+              React.createElement('input', {value:formPrest.prestacion, onChange:e=>setFormPrest({...formPrest, prestacion:e.target.value}), placeholder:'Se completa sola si elegís un código, o escribila manualmente', required:true})
+            ),
+
+            React.createElement('div', {className:'section-label'}, 'Código de nomenclador (opcional)'),
+            React.createElement('div', {className:'grid2'},
+              React.createElement('div', {className:'field'},
+                React.createElement('label', null, 'Obra social del código'),
+                React.createElement('select', {value:formPrest.obraSocialId, onChange:e=>setFormPrest({...formPrest, obraSocialId:e.target.value, codigo:''})},
+                  React.createElement('option', {value:''}, obrasSociales.length ? 'Seleccionar...' : 'No hay obras sociales cargadas'),
+                  obrasSociales.map(os => React.createElement('option', {key:os.id, value:os.id}, os.nombre))
+                )
+              ),
+              React.createElement('div', {className:'field'},
+                React.createElement('label', null, 'Código'),
+                React.createElement('select', {
+                  value:formPrest.codigo, onChange:e=>applyCodigo(e.target.value),
+                  disabled: !formPrest.obraSocialId
+                },
+                  React.createElement('option', {value:''}, (nomencladores[formPrest.obraSocialId]||[]).length ? 'Seleccionar código...' : 'Sin códigos cargados para esta obra social'),
+                  (nomencladores[formPrest.obraSocialId]||[]).map(r => React.createElement('option', {key:r.codigo, value:r.codigo}, r.codigo + ' — ' + r.descripcion))
+                )
+              )
+            ),
+
+            React.createElement('div', {className:'section-label'}, 'Pieza dentaria (opcional)'),
+            React.createElement('div', {className:'tooth-picker'},
+              CUADRANTES.map(q => React.createElement('div', {key:q.label, className:'tooth-row'},
+                React.createElement('span', {className:'tooth-quad-label'}, q.label),
+                q.nums.map(n => React.createElement('button', {
+                  type:'button', key:n,
+                  className:'tooth-btn' + (formPrest.piezaDentaria===String(n) ? ' selected' : ''),
+                  onClick:()=>setFormPrest({...formPrest, piezaDentaria: formPrest.piezaDentaria===String(n) ? '' : String(n)})
+                }, n))
+              ))
+            ),
+
+            formPrest.piezaDentaria && React.createElement(React.Fragment, null,
+              React.createElement('div', {className:'section-label'}, 'Caras (hasta 3)'),
+              React.createElement('div', {className:'cara-picker'},
+                CARAS.map(c => React.createElement('button', {
+                  type:'button', key:c, title:CARA_NOMBRE[c],
+                  className:'cara-btn' + (formPrest.caras.includes(c) ? ' selected' : ''),
+                  disabled: !formPrest.caras.includes(c) && formPrest.caras.length>=3,
+                  onClick:()=>toggleCara(c)
+                }, c))
+              )
+            ),
+            React.createElement('div', {className:'section-label'}, 'Cobro'),
+            React.createElement('div', {className:'grid3'},
+              React.createElement('div', {className:'field'},
+                React.createElement('label', null, 'Obra social'),
+                React.createElement('input', {type:'number', min:'0', value:formPrest.obraSocial, onChange:e=>setFormPrest({...formPrest, obraSocial:e.target.value})})
+              ),
+              React.createElement('div', {className:'field'},
+                React.createElement('label', null, 'Particular'),
+                React.createElement('input', {type:'number', min:'0', value:formPrest.particular, onChange:e=>setFormPrest({...formPrest, particular:e.target.value})})
+              ),
+              React.createElement('div', {className:'field'},
+                React.createElement('label', null, 'Plus'),
+                React.createElement('input', {type:'number', min:'0', value:formPrest.plus, onChange:e=>setFormPrest({...formPrest, plus:e.target.value})})
+              ),
+            ),
+            React.createElement('div', {className:'section-label'}, 'Estado del cobro'),
+            React.createElement('div', {className:'status-picker'},
+              ESTADOS_COBRO.map(e => React.createElement('div', {
+                key:e.value,
+                className:'status-opt' + (formPrest.estadoCobro===e.value ? ' selected s-'+e.color : ''),
+                onClick:()=>setFormPrest({...formPrest, estadoCobro:e.value})
+              }, React.createElement('span',{className:'dot d-'+e.color}), e.label))
+            )
+          ),
+          React.createElement('div', {className:'modal-foot'},
+            React.createElement('button', {type:'button', className:'btn btn-ghost', onClick:()=>setShowPrestForm(false)}, 'Cancelar'),
+            React.createElement('button', {type:'submit', className:'btn btn-primary'}, editingPrest ? 'Guardar cambios' : 'Registrar prestación')
+          )
+        )
+      )
+    ),
+
+    // Modal Presupuesto
+    showPresuForm && React.createElement('div', {className:'overlay', onClick:e=>{ if(e.target.className==='overlay') setShowPresuForm(false); }},
+      React.createElement('div', {className:'modal', style:{maxWidth:'600px'}},
+        React.createElement('div', {className:'modal-head'},
+          React.createElement('h2', null, editingPresu ? 'Editar presupuesto' : 'Nuevo presupuesto'),
+          React.createElement('button', {className:'modal-close', onClick:()=>setShowPresuForm(false)}, ICONS.close)
+        ),
+        React.createElement('form', {onSubmit:submitPresupuesto},
+          React.createElement('div', {className:'modal-body'},
+            React.createElement('div', {className:'grid2'},
+              React.createElement('div', {className:'field readonly'},
+                React.createElement('label', null, 'N°'),
+                React.createElement('input', {value:formPresu.id, disabled:true})
+              ),
+              React.createElement('div', {className:'field'},
+                React.createElement('label', null, 'Paciente *'),
+                React.createElement('select', {value:formPresu.pacienteId, onChange:e=>setFormPresu({...formPresu, pacienteId:e.target.value}), required:true},
+                  React.createElement('option', {value:''}, 'Seleccionar...'),
+                  pacientes.map(p => React.createElement('option', {key:p.id, value:p.id}, p.apellido + ', ' + p.nombre + ' (' + p.id + ')'))
+                )
+              ),
+              React.createElement('div', {className:'field'},
+                React.createElement('label', null, 'Profesional'),
+                React.createElement('select', {value:formPresu.profesional, onChange:e=>setFormPresu({...formPresu, profesional:e.target.value})},
+                  React.createElement('option', {value:''}, 'Seleccionar...'),
+                  profesionales.map(pr => React.createElement('option', {key:pr.id, value:pr.nombre}, pr.nombre))
+                )
+              ),
+              React.createElement('div', {className:'field'},
+                React.createElement('label', null, 'Monto total'),
+                React.createElement('input', {type:'number', min:'0', value:formPresu.montoTotal, onChange:e=>setFormPresu({...formPresu, montoTotal:e.target.value})})
+              ),
+            ),
+            React.createElement('div', {className:'field', style:{marginTop:'14px'}},
+              React.createElement('label', null, 'Tratamientos incluidos'),
+              React.createElement('input', {value:formPresu.tratamientos, onChange:e=>setFormPresu({...formPresu, tratamientos:e.target.value}), placeholder:'Ej: 2 endodoncias + corona provisoria'})
+            ),
+            React.createElement('div', {className:'grid2', style:{marginTop:'14px'}},
+              React.createElement('div', {className:'field'},
+                React.createElement('label', null, 'Forma de pago'),
+                React.createElement('select', {value:formPresu.formaPago, onChange:e=>setFormPresu({...formPresu, formaPago:e.target.value})},
+                  FORMAS_PAGO.map(f => React.createElement('option', {key:f, value:f}, f))
+                )
+              ),
+              React.createElement('div', {className:'field'},
+                React.createElement('label', null, 'Cuotas'),
+                React.createElement('input', {type:'number', min:'1', value:formPresu.cuotas, onChange:e=>setFormPresu({...formPresu, cuotas:e.target.value})})
+              ),
+            ),
+            React.createElement('div', {className:'section-label'}, 'Estado'),
+            React.createElement('div', {className:'status-picker'},
+              ESTADOS_PRESUPUESTO.map(e => React.createElement('div', {
+                key:e.value,
+                className:'status-opt' + (formPresu.estado===e.value ? ' selected s-'+e.color : ''),
+                onClick:()=>setFormPresu({...formPresu, estado:e.value})
+              }, React.createElement('span',{className:'dot d-'+e.color}), e.label)),
+            ),
+            formPresu.estado==='aceptado' && React.createElement('p', {className:'field', style:{fontSize:'12px', color:'var(--green)', marginTop:'10px'}}, '✓ Al guardar, este paciente quedará marcado "En tratamiento".')
+          ),
+          React.createElement('div', {className:'modal-foot'},
+            React.createElement('button', {type:'button', className:'btn btn-ghost', onClick:()=>setShowPresuForm(false)}, 'Cancelar'),
+            React.createElement('button', {type:'submit', className:'btn btn-primary'}, editingPresu ? 'Guardar cambios' : 'Crear presupuesto')
+          )
+        )
+      )
+    ),
+
+    // Modal Nueva Atención Clínica
+    showAtencionForm && React.createElement('div', {className:'overlay', onClick:e=>{ if(e.target.className==='overlay') setShowAtencionForm(false); }},
+      React.createElement('div', {className:'modal', style:{maxWidth:'600px'}},
+        React.createElement('div', {className:'modal-head'},
+          React.createElement('h2', null, editingAtencion ? 'Editar atención' : 'Registrar atención'),
+          React.createElement('button', {className:'modal-close', onClick:()=>setShowAtencionForm(false)}, ICONS.close)
+        ),
+        React.createElement('form', {onSubmit:submitAtencion},
+          React.createElement('div', {className:'modal-body'},
+            React.createElement('div', {className:'grid2'},
+              React.createElement('div', {className:'field'},
+                React.createElement('label', null, 'Fecha'),
+                React.createElement('input', {type:'date', value:formAtencion.fecha, onChange:e=>setFormAtencion({...formAtencion, fecha:e.target.value})})
+              ),
+              React.createElement('div', {className:'field'},
+                React.createElement('label', null, 'Profesional'),
+                React.createElement('select', {value:formAtencion.profesional, onChange:e=>setFormAtencion({...formAtencion, profesional:e.target.value})},
+                  React.createElement('option',{value:''},'Seleccionar...'),
+                  profesionales.map(pr=>React.createElement('option',{key:pr.id,value:pr.nombre},pr.nombre))
+                )
+              ),
+            ),
+            React.createElement('div', {className:'field', style:{marginTop:'14px'}},
+              React.createElement('label', null, 'Descripción de la prestación *'),
+              React.createElement('input', {value:formAtencion.descripcion, onChange:e=>setFormAtencion({...formAtencion, descripcion:e.target.value}), placeholder:'Ej: Restauración clase II, extracción simple...', required:true, autoFocus:true})
+            ),
+            React.createElement('div', {className:'section-label'}, 'Pieza y caras'),
+            React.createElement('div', {className:'tooth-picker'},
+              CUADRANTES.map(q=>React.createElement('div',{key:q.label,className:'tooth-row'},
+                React.createElement('span',{className:'tooth-quad-label'},q.label),
+                q.nums.map(n=>React.createElement('button',{
+                  type:'button',key:n,
+                  className:'tooth-btn'+(formAtencion.piezaDentaria===String(n)?' selected':''),
+                  onClick:()=>setFormAtencion({...formAtencion, piezaDentaria:formAtencion.piezaDentaria===String(n)?'':String(n)})
+                },n))
+              ))
+            ),
+            formAtencion.piezaDentaria && React.createElement(React.Fragment, null,
+              React.createElement('div', {className:'section-label'}, 'Caras (hasta 3)'),
+              React.createElement('div', {className:'cara-picker'},
+                CARAS.map(c=>React.createElement('button',{
+                  type:'button',key:c,title:CARA_NOMBRE[c],
+                  className:'cara-btn'+(formAtencion.caras.includes(c)?' selected':''),
+                  disabled:!formAtencion.caras.includes(c)&&formAtencion.caras.length>=3,
+                  onClick:()=>{
+                    const has=formAtencion.caras.includes(c);
+                    setFormAtencion({...formAtencion, caras: has?formAtencion.caras.filter(x=>x!==c):[...formAtencion.caras,c]});
+                  }
+                },c))
+              )
+            ),
+            React.createElement('div', {className:'section-label'}, 'Facturación (opcional)'),
+            React.createElement('div', {className:'grid2'},
+              React.createElement('div', {className:'field'},
+                React.createElement('label', null, 'Obra social'),
+                React.createElement('select', {value:formAtencion.obraSocialId, onChange:e=>setFormAtencion({...formAtencion, obraSocialId:e.target.value, codigo:''})},
+                  React.createElement('option',{value:''},'Particular / sin OS'),
+                  obrasSociales.map(os=>React.createElement('option',{key:os.id,value:os.id},os.nombre))
+                )
+              ),
+              React.createElement('div', {className:'field'},
+                React.createElement('label', null, 'Código'),
+                React.createElement('select', {
+                  value:formAtencion.codigo,
+                  onChange:e=>{
+                    const cod=e.target.value;
+                    const found=(nomencladores[formAtencion.obraSocialId]||[]).find(r=>r.codigo===cod);
+                    setFormAtencion({...formAtencion, codigo:cod, descripcion:found?found.descripcion:formAtencion.descripcion, montoOS:found?found.valor:formAtencion.montoOS});
+                  },
+                  disabled:!formAtencion.obraSocialId
+                },
+                  React.createElement('option',{value:''},'Seleccionar...'),
+                  (nomencladores[formAtencion.obraSocialId]||[]).map(r=>React.createElement('option',{key:r.codigo,value:r.codigo},r.codigo+' — '+r.descripcion))
+                )
+              ),
+            ),
+            React.createElement('div', {className:'grid3', style:{marginTop:'10px'}},
+              React.createElement('div', {className:'field'},
+                React.createElement('label', null, 'Monto OS'),
+                React.createElement('input', {type:'number', min:'0', value:formAtencion.montoOS, onChange:e=>setFormAtencion({...formAtencion, montoOS:e.target.value})})
+              ),
+              React.createElement('div', {className:'field'},
+                React.createElement('label', null, 'Particular'),
+                React.createElement('input', {type:'number', min:'0', value:formAtencion.montoParticular, onChange:e=>setFormAtencion({...formAtencion, montoParticular:e.target.value})})
+              ),
+              React.createElement('div', {className:'field'},
+                React.createElement('label', null, 'Plus'),
+                React.createElement('input', {type:'number', min:'0', value:formAtencion.montoPlus, onChange:e=>setFormAtencion({...formAtencion, montoPlus:e.target.value})})
+              ),
+            ),
+            React.createElement('div', {className:'field', style:{marginTop:'14px'}},
+              React.createElement('label', null, 'Notas de la consulta'),
+              React.createElement('textarea', {
+                value:formAtencion.notas, onChange:e=>setFormAtencion({...formAtencion, notas:e.target.value}),
+                placeholder:'Observaciones de esta consulta puntual...',
+                style:{width:'100%', minHeight:'70px', border:'1px solid var(--line)', borderRadius:'9px', padding:'10px 12px', fontFamily:'inherit', fontSize:'13.5px'}
+              })
+            )
+          ),
+          React.createElement('div', {className:'modal-foot'},
+            React.createElement('button', {type:'button', className:'btn btn-ghost', onClick:()=>setShowAtencionForm(false)}, 'Cancelar'),
+            React.createElement('button', {type:'submit', className:'btn btn-primary'}, editingAtencion ? 'Guardar cambios' : 'Registrar atención')
+          )
+        )
+      )
+    ),
+
+    // Modal Consentimiento Informado con Firma Digital
+    showConsentimiento && fichaActualPacId && React.createElement('div', {className:'overlay', onClick:e=>{ if(e.target.className==='overlay') setShowConsentimiento(false); }},
+      React.createElement('div', {className:'modal', style:{maxWidth:'640px'}},
+        React.createElement('div', {className:'modal-head'},
+          React.createElement('h2', null, '✍️ Consentimiento informado'),
+          React.createElement('button', {className:'modal-close', onClick:()=>setShowConsentimiento(false)}, ICONS.close)
+        ),
+        React.createElement('div', {className:'modal-body'},
+          React.createElement('div', {style:{background:'var(--surface-2)', border:'1px solid var(--line)', borderRadius:'10px', padding:'14px 16px', marginBottom:'18px', fontSize:'13px', lineHeight:'1.7', whiteSpace:'pre-wrap', maxHeight:'260px', overflowY:'auto', color:'var(--ink-soft)'}},
+            TEXTO_CONSENTIMIENTO
+          ),
+          React.createElement('div', {className:'section-label', style:{marginTop:'0'}}, 'Firma del paciente'),
+          React.createElement('p', {style:{fontSize:'12.5px', color:'var(--muted)', marginBottom:'8px'}}, 'El paciente firma con el dedo en el recuadro de abajo:'),
+          React.createElement('canvas', {
+            ref:canvasRef, className:'firma-canvas', width:560, height:160,
+          }),
+          React.createElement('div', {style:{display:'flex', gap:'10px', marginTop:'10px'}},
+            React.createElement('button', {type:'button', className:'btn btn-ghost', onClick:limpiarFirma}, '🗑 Limpiar firma'),
+          )
+        ),
+        React.createElement('div', {className:'modal-foot'},
+          React.createElement('button', {type:'button', className:'btn btn-ghost', onClick:()=>setShowConsentimiento(false)}, 'Cancelar'),
+          React.createElement('button', {type:'button', className:'btn btn-primary', onClick:()=>guardarFirma(fichaActualPacId)}, '💾 Guardar consentimiento firmado')
+        )
+      )
+    ),
+
+    // Modal Derivación
+    showDerivForm && React.createElement('div', {className:'overlay', onClick:e=>{ if(e.target.className==='overlay') setShowDerivForm(false); }},
+      React.createElement('div', {className:'modal', style:{maxWidth:'600px'}},
+        React.createElement('div', {className:'modal-head'},
+          React.createElement('h2', null, editingDeriv ? 'Editar derivación' : 'Nueva derivación'),
+          React.createElement('button', {className:'modal-close', onClick:()=>setShowDerivForm(false)}, ICONS.close)
+        ),
+        React.createElement('form', {onSubmit:submitDerivacion},
+          React.createElement('div', {className:'modal-body'},
+            React.createElement('div', {className:'grid2'},
+              React.createElement('div', {className:'field readonly'},
+                React.createElement('label', null, 'N°'),
+                React.createElement('input', {value:formDeriv.id, disabled:true})
+              ),
+              React.createElement('div', {className:'field'},
+                React.createElement('label', null, 'Fecha'),
+                React.createElement('input', {type:'date', value:formDeriv.fecha, onChange:e=>setFormDeriv({...formDeriv, fecha:e.target.value})})
+              ),
+              React.createElement('div', {className:'field'},
+                React.createElement('label', null, 'Paciente *'),
+                React.createElement('select', {value:formDeriv.pacienteId, onChange:e=>setFormDeriv({...formDeriv, pacienteId:e.target.value, presupuestoId:''}), required:true},
+                  React.createElement('option', {value:''}, 'Seleccionar...'),
+                  pacientes.map(p => React.createElement('option', {key:p.id, value:p.id}, p.apellido + ', ' + p.nombre + ' (' + p.id + ')'))
+                )
+              ),
+              React.createElement('div', {className:'field'},
+                React.createElement('label', null, 'Presupuesto relacionado'),
+                React.createElement('select', {value:formDeriv.presupuestoId, onChange:e=>setFormDeriv({...formDeriv, presupuestoId:e.target.value})},
+                  React.createElement('option', {value:''}, 'Sin presupuesto vinculado'),
+                  presupuestos.filter(p=>p.pacienteId===formDeriv.pacienteId).map(p => React.createElement('option', {key:p.id, value:p.id}, p.id + ' — ' + money(p.montoTotal)))
+                )
+              ),
+            ),
+            React.createElement('div', {className:'grid2', style:{marginTop:'14px'}},
+              React.createElement('div', {className:'field'},
+                React.createElement('label', null, 'Quién deriva *'),
+                React.createElement('input', {value:formDeriv.quienDeriva, onChange:e=>setFormDeriv({...formDeriv, quienDeriva:e.target.value}), placeholder:'Profesional o colega que deriva', required:true, list:'lista-profesionales'}),
+                React.createElement('datalist', {id:'lista-profesionales'}, profesionales.map(pr=>React.createElement('option',{key:pr.id, value:pr.nombre})))
+              ),
+              React.createElement('div', {className:'field'},
+                React.createElement('label', null, 'Quién recibe *'),
+                React.createElement('select', {value:formDeriv.quienRecibe, onChange:e=>setFormDeriv({...formDeriv, quienRecibe:e.target.value}), required:true},
+                  React.createElement('option', {value:''}, 'Seleccionar...'),
+                  profesionales.map(pr => React.createElement('option', {key:pr.id, value:pr.nombre}, pr.nombre))
+                )
+              ),
+            ),
+            React.createElement('div', {className:'field', style:{marginTop:'14px'}},
+              React.createElement('label', null, 'Motivo'),
+              React.createElement('input', {value:formDeriv.motivo, onChange:e=>setFormDeriv({...formDeriv, motivo:e.target.value}), placeholder:'Ej: requiere ortodoncia previa'})
+            ),
+            React.createElement('div', {className:'grid2', style:{marginTop:'14px'}},
+              React.createElement('div', {className:'field'},
+                React.createElement('label', null, '% Comisión'),
+                React.createElement('input', {type:'number', min:'0', max:'100', value:formDeriv.porcentaje, onChange:e=>setFormDeriv({...formDeriv, porcentaje:e.target.value})})
+              ),
+              React.createElement('div', {className:'field readonly'},
+                React.createElement('label', null, 'Comisión calculada'),
+                React.createElement('input', {value: money(comisionMontoDe(formDeriv)), disabled:true})
+              ),
+            ),
+            React.createElement('div', {className:'section-label'}, 'Estado de la comisión'),
+            React.createElement('div', {className:'status-picker'},
+              ESTADOS_COMISION.map(e => React.createElement('div', {
+                key:e.value,
+                className:'status-opt' + (formDeriv.comisionPagada===e.value ? ' selected s-'+e.color : ''),
+                onClick:()=>setFormDeriv({...formDeriv, comisionPagada:e.value})
+              }, React.createElement('span',{className:'dot d-'+e.color}), e.label))
+            )
+          ),
+          React.createElement('div', {className:'modal-foot'},
+            React.createElement('button', {type:'button', className:'btn btn-ghost', onClick:()=>setShowDerivForm(false)}, 'Cancelar'),
+            React.createElement('button', {type:'submit', className:'btn btn-primary'}, editingDeriv ? 'Guardar cambios' : 'Registrar derivación')
+          )
+        )
+      )
+    ),
+
+    toast && React.createElement(Toast, {msg:toast, onDone:()=>setToast(null)})
+  )
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
+</script>
+</body>
+</html>
