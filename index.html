@@ -582,15 +582,12 @@ function App(){
 
   useEffect(()=>{
     if(!fauth){ setUser(null); return; }
-  useEffect(()=>{
-    if(!fauth){ setUser(null); return; }
     let resolved = false;
     const timer = setTimeout(()=>{ if(!resolved){ resolved=true; setUser(null); } }, 5000);
     const unsub = fauth.onAuthStateChanged(u => {
       if(!resolved){ resolved=true; clearTimeout(timer); setUser(u); }
     });
     return ()=>{ clearTimeout(timer); unsub(); };
-  },[]);
   },[]);
 
   useEffect(()=>{ if(user) loadAll(); },[user]);
